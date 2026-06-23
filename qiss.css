@@ -22,6 +22,12 @@ span {
 [margin] {
   margin: attr(margin px);
 }
+[margin-x] {
+  margin-inline: attr(margin-x px);
+}
+[margin-y] {
+  margin-block: attr(margin-y px);
+}
 [margin="max"] {
   margin: auto;
 }
@@ -83,4 +89,20 @@ row-wrap, column-wrap {
 }
 column-wrap {
   flex-direction: column;
+}
+/* tooltip */
+[relative] {
+  position: relative;
+}
+tooltip {
+  display: none;
+  position: absolute;
+  top: 100%;
+  margin-left: 4px;
+  background: white;
+  box-shadow: inset 1px 1px lightgray, inset -1px -1px black;
+  pointer-events: none;
+}
+*:hover > tooltip {
+  display: block;
 }
