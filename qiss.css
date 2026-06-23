@@ -12,6 +12,12 @@ html, body {
 :not(p) {
   line-height: 1;
 }
+div, span {
+  display: inline-block;
+}
+span {
+  min-width: unset; /* NOTE: for text sizing */
+}
 /* qiss */
 [margin] {
   margin: attr(margin px);
@@ -40,7 +46,7 @@ html, body {
 [scroll-y] {
   overflow-y: auto;
 }
-
+/* row, column */
 row, column {
   display: inline-flex;
   justify-content: flex-start;
@@ -55,11 +61,23 @@ column {
 column > [width] {
   align-self: center;
 }
-
-row-split {
+/* row-split, column-split */
+row-split, column-split {
   display: flex;
   align-items: center;
 }
-row-split > * {
+row-split > *, column-split > * {
   flex: 1;
+}
+column-split {
+  flex-direction: column;
+}
+/* row-wrap, column-wrap */
+row-wrap, column-wrap {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+}
+column-wrap {
+  flex-direction: column;
 }
