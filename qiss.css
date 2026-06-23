@@ -9,8 +9,14 @@ html, body {
   min-height: 100%;
   display: flex;
 }
+button {
+  padding: 0;
+}
 :not(p) {
   line-height: 1;
+}
+span {
+  display: inline-block;
 }
 /* qiss */
 [margin] {
@@ -39,6 +45,9 @@ html, body {
 }
 [scroll-y] {
   overflow-y: auto;
+}
+[font-size] {
+  font-size: attr(height px);
 }
 /* row, column */
 row, column {
