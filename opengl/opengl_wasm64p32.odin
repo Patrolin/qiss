@@ -8,11 +8,13 @@ foreign env {
 	console_log_int :: proc(v: int) ---
 	window_requestAnimationFrame :: proc() ---
 }
-sbrk :: proc "c" (delta: int) -> int {
-	if delta == 0 {
-		return intrinsics.wasm_memory_size(0)
+/** Grow heap in 65536B chunks */
+sbrk :: proc "c" (delta_bytes: uintptr) -> int {
+	delta_chunks := (delta_bytes + 0xffff) >> 16
+	if delta_chunks == 0 {
+		return intrinsics.wasm_memory_size(0) << 16
 	} else {
-		return intrinsics.wasm_memory_grow(0, delta)
+		return intrinsics.wasm_memory_grow(0, delta_chunks) << 16
 	}
 }
 
@@ -20,8 +22,5 @@ sbrk :: proc "c" (delta: int) -> int {
 @(export)
 start :: proc "c" () {
 	console_log("Hello from Odin!")
-	console_log_int(sbrk(1))
-	console_log("ayaya.2")
-	console_log_int(sbrk(-1))
+	console_log_int(sbrk(4096))
 }
-//1245184
