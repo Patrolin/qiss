@@ -1,4 +1,4 @@
-BUILD :: "odin build opengl -target:freestanding_wasm64p32 -out:dist/opengl.wasm -default-to-nil-allocator -no-entry-point -o:size -print-linker-flags"
+BUILD :: "odin build opengl -target:freestanding_wasm64p32 -out:dist/opengl.wasm -default-to-nil-allocator -no-entry-point -o:size"
 
 build:
   $$BUILD
