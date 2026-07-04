@@ -20,6 +20,6 @@ const wasm_promise = WebAssembly.instantiateStreaming(fetch("dist/opengl.wasm"),
 const utf8_decoder = new TextDecoder();
 document.addEventListener("DOMContentLoaded", async () => {
   wasm_instance = (await wasm_promise).instance;
-  console.log("ayaya.wasm_instance", wasm_instance)
+  console.log(wasm_instance);
   wasm_instance.exports.start();
 });
