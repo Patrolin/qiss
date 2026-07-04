@@ -13,8 +13,8 @@ foreign env {
 @(export)
 start :: proc "c" () {
 	context = runtime.default_context()
+	context.temp_allocator = arena_allocator(1024 * 1024)
 	context.allocator = dumb_allocator()
-	context.temp_allocator = context.allocator
 	print("Hello from Odin!")
 	x := u64(13)
 	printf("foo: %", f_u64(&x))
