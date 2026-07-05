@@ -18,8 +18,9 @@ os_grow_heap :: proc(delta_bytes: int) -> (new_heap_chunk: []byte) {
 	when ODIN_ARCH == .wasm64p32 {
 		CHUNK_SIZE_BITS :: 16
 		CHUNK_SIZE :: (1 << CHUNK_SIZE_BITS)
-		delta_chunks := (delta_bytes + (CHUNK_SIZE - 1)) >> 16
-		prev_end := ([^]byte)(uintptr(intrinsics.wasm_memory_grow(0, uintptr(delta_chunks)) << 16))
+		delta_chunks := (uintptr(delta_bytes) + (CHUNK_SIZE - 1)) >> CHUNK_SIZE_BITS
+		prev_chunks_end := intrinsics.wasm_memory_grow(0, delta_chunks)
+		prev_end := ([^]byte)(uintptr(prev_chunks_end) << CHUNK_SIZE_BITS)
 		return prev_end[:delta_chunks * CHUNK_SIZE]
 	} else {
 		assert(false)
