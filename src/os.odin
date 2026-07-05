@@ -5,6 +5,7 @@ when ODIN_ARCH == .wasm64p32 {
 	foreign import env "env"
 	@(default_calling_convention = "c")
 	foreign env {
+		wasm_print_int :: proc(#any_int value: int) ---
 		wasm_write :: proc(file: FileHandle, bytes_ptr: [^]byte, bytes_count: int) -> int ---
 		wasm_requestAnimationFrame :: proc() ---
 	}

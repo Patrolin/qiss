@@ -6,8 +6,8 @@ ArenaAllocator :: struct {
 	end:   uintptr,
 	start: uintptr,
 }
-arena_allocator :: proc(size: uint) -> runtime.Allocator {
-	data := os_grow_heap(size_of(ArenaAllocator))
+arena_allocator :: proc(size: int) -> runtime.Allocator {
+	data := os_grow_heap(size)
 	ptr := uintptr(raw_data(data))
 	info := (^ArenaAllocator)(ptr)
 	info.next = ptr + size_of(ArenaAllocator)

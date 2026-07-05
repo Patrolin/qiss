@@ -44,6 +44,7 @@ function wasm_write(file, bytes_ptr, bytes_count) {
 // run the wasm
 const WASM_IMPORTS = {
   env: {
+    wasm_print_int: console.log,
     wasm_write,
     wasm_requestAnimationFrame: window.requestAnimationFrame,
   },
