@@ -1,6 +1,7 @@
 package main
 import "base:intrinsics"
 
+// syscalls
 when ODIN_ARCH == .wasm64p32 {
 	foreign import env "env"
 	@(default_calling_convention = "c")
@@ -12,7 +13,7 @@ when ODIN_ARCH == .wasm64p32 {
 }
 
 // allocations
-os_grow_heap :: proc(delta_bytes: int) -> (new_chunk: []byte) {
+os_grow_heap :: proc(delta_bytes: int) -> (new_heap_chunk: []byte) {
 	assert(delta_bytes > 0)
 	when ODIN_ARCH == .wasm64p32 {
 		CHUNK_SIZE_BITS :: 16
@@ -23,17 +24,17 @@ os_grow_heap :: proc(delta_bytes: int) -> (new_chunk: []byte) {
 	} else {
 		assert(false)
 	}
-	return {}
+	return
 }
 
 // files
-os_write :: proc(file: FileHandle, bytes_ptr: [^]byte, bytes_count: int) -> int {
+os_write :: proc(file: FileHandle, bytes_ptr: [^]byte, bytes_count: int) -> (written_bytes: int) {
 	when ODIN_ARCH == .wasm64p32 {
 		return wasm_write(file, bytes_ptr, bytes_count)
 	} else {
 		assert(false)
 	}
-	return 0
+	return
 }
 
 // console
