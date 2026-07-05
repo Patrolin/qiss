@@ -1,7 +1,6 @@
 package main
 import "base:runtime"
 
-// exports
 @(export)
 start :: proc "c" () {
 	context = runtime.default_context()
