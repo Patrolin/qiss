@@ -1,18 +1,34 @@
+// platform
 /** @type {WebAssembly.Instance} */
 let wasm_instance;
+/**
+ *  @param {BigInt} file
+ *  @param {BigInt} bytes
+ *  @param {BigInt} bytes_count */
+function wasm_write(file, bytes_ptr, bytes_count) {
+  const memory = wasm_instance.exports.memory.buffer;
+  const bytes = new Uint8Array(memory, Number(bytes_ptr), Number(bytes_count));
+  const string = utf8_decoder.decode(bytes);
+  if (file == 1) {
+    console.log(string);
+  } else if (file == 2) {
+    console.error(string);
+  } else {
+    throw RangeError(`Cannot write '${string}' to unknown file: ${file}`);
+  }
+  return bytes_count;
+}
 // fetch and decode wasm file
 const WASM_IMPORTS = {
   env: {
+    wasm_write,
     console_log: (slice_ptr) => {
       const memory = wasm_instance.exports.memory.buffer;
       const slice = new BigInt64Array(memory, slice_ptr, 2);
       const bytes = new Uint8Array(memory, Number(slice[0]), Number(slice[1]));
       console.log(utf8_decoder.decode(bytes));
     },
-    console_log_int: (int_value) => {
-      console.log(int_value);
-    },
-    window_requestAnimationFrame: window.requestAnimationFrame,
+    wasm_requestAnimationFrame: window.requestAnimationFrame,
   },
 };
 const wasm_promise = WebAssembly.instantiateStreaming(fetch("dist/opengl.wasm"), WASM_IMPORTS);

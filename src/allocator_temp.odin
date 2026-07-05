@@ -7,10 +7,10 @@ ArenaAllocator :: struct {
 	start: uintptr,
 }
 arena_allocator :: proc(size: uint) -> runtime.Allocator {
-	ptr := uintptr(sbrk(size_of(ArenaAllocator)))
+	ptr := uintptr(os_sbrk(size_of(ArenaAllocator)))
 	info := (^ArenaAllocator)(ptr)
 	info.next = ptr + size_of(ArenaAllocator)
-	info.end = uintptr(sbrk(0))
+	info.end = uintptr(os_sbrk(0))
 	return runtime.Allocator{arena_allocator_proc, rawptr(ptr)}
 }
 arena_allocator_proc :: proc(

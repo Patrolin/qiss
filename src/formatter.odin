@@ -1,5 +1,6 @@
 package main
 
+import "base:runtime"
 // string builder
 StringBuilder :: [dynamic]u8
 sb_print :: proc(sb: ^StringBuilder, str: string) {
@@ -11,8 +12,8 @@ sb_string :: proc(sb: StringBuilder) -> string {
 
 // printf
 print :: proc(str: string) {
-	when ODIN_OS == .Freestanding {
-		console_log(str)
+	when ODIN_ARCH == .wasm64p32 {
+		os_write(STDOUT, raw_data(str), len(str))
 	} else {
 		assert(false)
 	}
@@ -40,10 +41,10 @@ tprintf :: proc(format: string, values: ..Formatter) -> string {
 Formatter :: struct {
 	procedure: proc(sb: ^StringBuilder, formatter: ^Formatter),
 	ptr:       rawptr,
-	options:   [2]u32,
+	//options:   [2]u32,
 }
 f_u64 :: proc(ptr: ^u64) -> Formatter {
-	return Formatter{f_u64_proc, ptr, {}}
+	return Formatter{f_u64_proc, ptr}
 }
 f_u64_proc :: proc(sb: ^StringBuilder, formatter: ^Formatter) {
 	value := (^u64)(formatter.ptr)^
