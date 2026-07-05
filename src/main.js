@@ -1,3 +1,6 @@
+// fetch the wasm file
+const wasm_file = fetch("dist/opengl.wasm", {mode: "no-cors"});
+
 // platform
 /** @type {WebAssembly.Instance} */
 let wasm_instance;
@@ -18,15 +21,15 @@ function wasm_write(file, bytes_ptr, bytes_count) {
   }
   return bytes_count;
 }
-// fetch and decode the wasm
+
+// run the wasm
 const WASM_IMPORTS = {
   env: {
     wasm_write,
     wasm_requestAnimationFrame: window.requestAnimationFrame,
   },
 };
-const wasm_promise = WebAssembly.instantiateStreaming(fetch("dist/opengl.wasm"), WASM_IMPORTS);
-// run the wasm
+const wasm_promise = WebAssembly.instantiateStreaming(wasm_file, WASM_IMPORTS);
 const utf8_decoder = new TextDecoder();
 document.addEventListener("DOMContentLoaded", async () => {
   wasm_instance = (await wasm_promise).instance;
