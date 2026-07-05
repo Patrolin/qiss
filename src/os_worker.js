@@ -58,16 +58,16 @@ const glProcs = Object.fromEntries([
 }]));
 
 // window
-const CANVAS_EVENT = 0;
-const CLICK_EVENT = 1;
+const CANVAS_EVENT = -1;
+const CLICK_EVENT = 0;
 self.onmessage = async ({data}) => {
-  console.log("event", data);
+  //console.log("event", data);
   switch (data.type) {
   case CANVAS_EVENT: {
     wasm_canvas = data.canvas;
   } break;
   case CLICK_EVENT: {
-    // TODO: handle events
+    wasm_instance.exports.on_event(BigInt(data.type), BigInt(data.ns), BigInt(data.x), BigInt(data.y));
   } break;
   default: {
     throw new Error(`Uknown event type: ${data.type}`);
@@ -87,7 +87,14 @@ const WASM_IMPORTS = {
 const utf8_decoder = new TextDecoder();
 const wasm_promise = WebAssembly.instantiateStreaming(wasm_file, WASM_IMPORTS);
 (async () => {
-  wasm_instance = (await wasm_promise).instance;
+  const instance = (await wasm_promise).instance;
   console.log(wasm_instance);
-  wasm_instance.exports.start();
+  instance.exports.on_start();
+  wasm_instance = instance;
+  while (true) {
+    instance.exports.on_tick();
+    await new Promise((resolve) => {
+      requestAnimationFrame(resolve);
+    });
+  }
 })();

@@ -1,8 +1,8 @@
 const worker = new Worker("/src/os_worker.js");
 
 // window
-const CANVAS_EVENT = 0;
-const CLICK_EVENT = 1;
+const CANVAS_EVENT = -1;
+const CLICK_EVENT = 0;
 document.addEventListener("DOMContentLoaded", () => {
   const canvas = document.querySelector("canvas").transferControlToOffscreen();
   worker.postMessage({ type: CANVAS_EVENT, canvas }, [canvas]);

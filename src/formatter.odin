@@ -59,3 +59,19 @@ f_u64_proc :: proc(sb: ^StringBuilder, formatter: ^Formatter) {
 	}
 	sb_print(sb, string(buffer[i:]))
 }
+f_int :: proc(ptr: ^int) -> Formatter {
+	return Formatter{f_int_proc, ptr}
+}
+f_int_proc :: proc(sb: ^StringBuilder, formatter: ^Formatter) {
+	value := (^int)(formatter.ptr)^
+	buffer: [19]byte
+	i := 18
+	for {
+		digit := value % 10
+		value = value / 10
+		buffer[i] = byte('0' + digit)
+		if i < 0 || value == 0 {break}
+		i -= 1
+	}
+	sb_print(sb, string(buffer[i:]))
+}

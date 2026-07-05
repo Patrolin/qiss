@@ -1,14 +1,29 @@
 package main
 import "base:runtime"
 
-// TODO: use `performance.now()` and `new Worker()` and `OffscreenCanvas` for accurate event times
+g_default_context: runtime.Context
+g_gl: FileHandle
+
 @(export)
-start :: proc "c" () {
+on_start :: proc "c" () {
 	context = runtime.default_context()
 	context.temp_allocator = arena_allocator(1024 * 1024)
 	context.allocator = bump_allocator()
-	gl := wasm_createWebGLContext()
-	print("Hello from Odin!")
-	gl_clearColor(gl, 0, 0, 0, 1)
-	gl_clear(gl, .COLOR_BUFFER_BIT)
+	g_default_context = context
+	g_gl = wasm_createWebGLContext()
+}
+@(export)
+on_event :: proc "c" (type, ns, x, y: int) {
+	type := type
+	ns := ns
+	x := x
+	y := y
+	context = g_default_context
+	printf("odin: %, %, %, %", f_int(&type), f_int(&ns), f_int(&x), f_int(&y))
+}
+@(export)
+on_tick :: proc "c" () {
+	context = g_default_context
+	gl_clearColor(g_gl, 0, 0, 0, 1)
+	gl_clear(g_gl, .COLOR_BUFFER_BIT)
 }
