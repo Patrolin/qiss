@@ -1,75 +1,18 @@
-// fetch the wasm file
-const wasm_file = fetch("dist/opengl.wasm", {mode: "no-cors"});
-/** @type {WebAssembly.Instance} */
-let wasm_instance;
+const worker = new Worker("/src/os_worker.js");
 
-// files
-/** @type {Map<number, any>} */
-const handles = new Map();
-let next_handle = 0;
-/**
- * @param {any} value
- * @return {number} */
-function newHandle(value) {
-  const file_handle = next_handle;
-  handles.set(file_handle, value);
-  while (handles.has(next_handle)) {
-    next_handle = (next_handle + 1) | 0;
-  }
-  return file_handle;
-}
-
-// console
-const STDIN = newHandle();
-const STDOUT = newHandle();
-const STDERR = newHandle();
-/**
- *  @param {BigInt} file
- *  @param {BigInt} bytes_ptr
- *  @param {BigInt} bytes_count */
-function wasm_write(file, bytes_ptr, bytes_count) {
-  const memory = wasm_instance.exports.memory.buffer;
-  const bytes = new Uint8Array(memory, Number(bytes_ptr), Number(bytes_count));
-  const string = utf8_decoder.decode(bytes);
-  if (file == STDOUT) {
-    console.log(string);
-  } else if (file == STDERR) {
-    console.error(string);
-  } else {
-    throw RangeError(`Cannot write '${string}' to unknown file: ${file}`);
-  }
-  return bytes_count;
-}
-
-// opengl
-function wasm_createWebGLContext() {
-  const canvas = document.querySelector("canvas");
-  const gl = canvas.getContext("webgl");
-  if (gl == null) throw new Error("Your browser does not support WebGL!");
-  return BigInt(newHandle(gl));
-}
-const glProcs = Object.fromEntries([
-  "clearColor",
-  "clear"
-].map(key => [`gl_${key}`, (glHandle, ...args) => {
-  const gl = handles.get(Number(glHandle));
-  gl[key](...args.map(v => (typeof v === "bigint" ? Number(v) : v)));
-}]));
-
-// run the wasm
-const WASM_IMPORTS = {
-  env: {
-    wasm_print_int: console.log,
-    wasm_write,
-    wasm_createWebGLContext,
-    wasm_requestAnimationFrame: window.requestAnimationFrame,
-    ...glProcs,
-  },
-};
-const wasm_promise = WebAssembly.instantiateStreaming(wasm_file, WASM_IMPORTS);
-const utf8_decoder = new TextDecoder();
-document.addEventListener("DOMContentLoaded", async () => {
-  wasm_instance = (await wasm_promise).instance;
-  console.log(wasm_instance);
-  wasm_instance.exports.start();
+// window
+const CANVAS_EVENT = 0;
+const CLICK_EVENT = 1;
+document.addEventListener("DOMContentLoaded", () => {
+  const canvas = document.querySelector("canvas").transferControlToOffscreen();
+  worker.postMessage({ type: CANVAS_EVENT, canvas }, [canvas]);
+});
+window.addEventListener("click", (event) => {
+  const ns = Math.round(performance.now() * 1e6);
+  worker.postMessage({
+    type: CLICK_EVENT,
+    ns,
+    x: event.clientX,
+    y: event.clientY,
+  });
 });

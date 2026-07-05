@@ -9,7 +9,7 @@ when ODIN_ARCH == .wasm64p32 {
 		wasm_print_int :: proc(#any_int value: int) ---
 		wasm_write :: proc(file: FileHandle, bytes_ptr: [^]byte, bytes_count: int) -> int ---
 		wasm_createWebGLContext :: proc() -> FileHandle ---
-		wasm_requestAnimationFrame :: proc() ---
+		wasm_waitForVBlank :: proc() ---
 		gl_clearColor :: proc(gl: FileHandle, r, g, b, a: f64) ---
 		gl_clear :: proc(gl: FileHandle, buffer_type: GL_BUFFER_TYPE) ---
 	}
