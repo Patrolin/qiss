@@ -5,24 +5,24 @@ let wasm_instance;
 
 // files
 /** @type {Map<number, any>} */
-const file_handles = new Map();
-let next_file_handle = 0;
+const handles = new Map();
+let next_handle = 0;
 /**
  * @param {any} value
  * @return {number} */
-function newFileHandle(value) {
-  const file_handle = next_file_handle;
-  file_handles.set(file_handle, value);
-  while (file_handles.has(next_file_handle)) {
-    next_file_handle = (next_file_handle + 1) | 0;
+function newHandle(value) {
+  const file_handle = next_handle;
+  handles.set(file_handle, value);
+  while (handles.has(next_handle)) {
+    next_handle = (next_handle + 1) | 0;
   }
   return file_handle;
 }
 
 // console
-const STDIN = newFileHandle();
-const STDOUT = newFileHandle();
-const STDERR = newFileHandle();
+const STDIN = newHandle();
+const STDOUT = newHandle();
+const STDERR = newHandle();
 /**
  *  @param {BigInt} file
  *  @param {BigInt} bytes_ptr
@@ -41,12 +41,29 @@ function wasm_write(file, bytes_ptr, bytes_count) {
   return bytes_count;
 }
 
+// opengl
+function wasm_createWebGLContext() {
+  const canvas = document.querySelector("canvas");
+  const gl = canvas.getContext("webgl");
+  if (gl == null) throw new Error("Your browser does not support WebGL!");
+  return BigInt(newHandle(gl));
+}
+const glProcs = Object.fromEntries([
+  "clearColor",
+  "clear"
+].map(key => [`gl_${key}`, (glHandle, ...args) => {
+  const gl = handles.get(Number(glHandle));
+  gl[key](...args.map(v => (typeof v === "bigint" ? Number(v) : v)));
+}]));
+
 // run the wasm
 const WASM_IMPORTS = {
   env: {
     wasm_print_int: console.log,
     wasm_write,
+    wasm_createWebGLContext,
     wasm_requestAnimationFrame: window.requestAnimationFrame,
+    ...glProcs,
   },
 };
 const wasm_promise = WebAssembly.instantiateStreaming(wasm_file, WASM_IMPORTS);
