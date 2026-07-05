@@ -18,7 +18,7 @@ function wasm_write(file, bytes_ptr, bytes_count) {
   }
   return bytes_count;
 }
-// fetch and decode wasm file
+// fetch and decode the wasm
 const WASM_IMPORTS = {
   env: {
     wasm_write,
