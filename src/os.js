@@ -3,7 +3,7 @@ const wasm_file = fetch("dist/opengl.wasm", {mode: "no-cors"});
 /** @type {WebAssembly.Instance} */
 let wasm_instance;
 
-// file_handles
+// files
 /** @type {Map<number, any>} */
 const file_handles = new Map();
 let next_file_handle = 0;

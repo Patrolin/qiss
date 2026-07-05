@@ -26,12 +26,6 @@ os_sbrk :: proc(delta_bytes: uintptr) -> int {
 	return 0
 }
 
-// console
-FileHandle :: distinct int
-STDIN :: FileHandle(0)
-STDOUT :: FileHandle(1)
-STDERR :: FileHandle(2)
-
 // files
 os_write :: proc(file: FileHandle, bytes_ptr: [^]byte, bytes_count: int) -> int {
 	when ODIN_ARCH == .wasm64p32 {
@@ -41,3 +35,9 @@ os_write :: proc(file: FileHandle, bytes_ptr: [^]byte, bytes_count: int) -> int 
 	}
 	return 0
 }
+
+// console
+FileHandle :: distinct int
+STDIN :: FileHandle(0)
+STDOUT :: FileHandle(1)
+STDERR :: FileHandle(2)
