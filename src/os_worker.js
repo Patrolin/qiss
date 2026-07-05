@@ -94,7 +94,8 @@ const wasm_promise = WebAssembly.instantiateStreaming(wasm_file, WASM_IMPORTS);
   while (true) {
     instance.exports.on_tick();
     await new Promise((resolve) => {
-      requestAnimationFrame(resolve);
+      setTimeout(resolve, 17);
+      //requestAnimationFrame(resolve);
     });
   }
 })();

@@ -26,4 +26,5 @@ on_tick :: proc "c" () {
 	context = g_default_context
 	gl_clearColor(g_gl, 0, 0, 0, 1)
 	gl_clear(g_gl, .COLOR_BUFFER_BIT)
+	free_all(context.temp_allocator)
 }
