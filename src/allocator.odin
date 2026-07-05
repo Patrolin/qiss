@@ -6,10 +6,11 @@ BumpAllocator :: struct {
 	end:  uintptr,
 }
 bump_allocator :: proc() -> runtime.Allocator {
-	ptr := uintptr(os_sbrk(size_of(BumpAllocator)))
+	data := os_grow_heap(size_of(BumpAllocator))
+	ptr := uintptr(raw_data(data))
 	info := (^BumpAllocator)(ptr)
 	info.next = ptr + size_of(BumpAllocator)
-	info.end = uintptr(os_sbrk(0))
+	info.end = ptr + uintptr(len(data))
 	return runtime.Allocator{bump_allocator_proc, rawptr(ptr)}
 }
 bump_allocator_proc :: proc(
@@ -29,7 +30,10 @@ bump_allocator_proc :: proc(
 		{
 			next_ptr := (uintptr(info.next) + 15) & ~uintptr(15)
 			info.next = next_ptr
-			if next_ptr > info.end {os_sbrk(uintptr(size))}
+			if next_ptr > info.end {
+				next_heap_chunk := os_grow_heap(size)
+				info.end = uintptr(&next_heap_chunk[len(next_heap_chunk)])
+			}
 			data := ([^]u8)(next_ptr)[:size]
 			if old_memory != nil {
 				copy(data, ([^]u8)(old_memory)[:old_size])

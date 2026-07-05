@@ -11,19 +11,18 @@ when ODIN_ARCH == .wasm64p32 {
 }
 
 // allocations
-os_sbrk :: proc(delta_bytes: uintptr) -> int {
+os_grow_heap :: proc(delta_bytes: int) -> (new_chunk: []byte) {
+	assert(delta_bytes > 0)
 	when ODIN_ARCH == .wasm64p32 {
-		// grow heap in 65536B chunks
-		delta_chunks := (delta_bytes + 0xffff) >> 16
-		if delta_chunks == 0 {
-			return intrinsics.wasm_memory_size(0) << 16
-		} else {
-			return intrinsics.wasm_memory_grow(0, delta_chunks) << 16
-		}
+		CHUNK_SIZE_BITS :: 16
+		CHUNK_SIZE :: (1 << CHUNK_SIZE_BITS)
+		delta_chunks := (delta_bytes + (CHUNK_SIZE - 1)) >> 16
+		prev_end := ([^]byte)(uintptr(intrinsics.wasm_memory_grow(0, uintptr(delta_chunks)) << 16))
+		return prev_end[:delta_chunks * CHUNK_SIZE]
 	} else {
 		assert(false)
 	}
-	return 0
+	return {}
 }
 
 // files
