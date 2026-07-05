@@ -22,12 +22,6 @@ function wasm_write(file, bytes_ptr, bytes_count) {
 const WASM_IMPORTS = {
   env: {
     wasm_write,
-    console_log: (slice_ptr) => {
-      const memory = wasm_instance.exports.memory.buffer;
-      const slice = new BigInt64Array(memory, slice_ptr, 2);
-      const bytes = new Uint8Array(memory, Number(slice[0]), Number(slice[1]));
-      console.log(utf8_decoder.decode(bytes));
-    },
     wasm_requestAnimationFrame: window.requestAnimationFrame,
   },
 };
