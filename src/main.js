@@ -3,7 +3,7 @@
 let wasm_instance;
 /**
  *  @param {BigInt} file
- *  @param {BigInt} bytes
+ *  @param {BigInt} bytes_ptr
  *  @param {BigInt} bytes_count */
 function wasm_write(file, bytes_ptr, bytes_count) {
   const memory = wasm_instance.exports.memory.buffer;
