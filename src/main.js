@@ -1,9 +1,28 @@
 // fetch the wasm file
 const wasm_file = fetch("dist/opengl.wasm", {mode: "no-cors"});
-
-// platform
 /** @type {WebAssembly.Instance} */
 let wasm_instance;
+
+// file_handles
+/** @type {Map<number, any>} */
+const file_handles = new Map();
+let next_file_handle = 0;
+/**
+ * @param {any} value
+ * @return {number} */
+function newFileHandle(value) {
+  const file_handle = next_file_handle;
+  file_handles.set(file_handle, value);
+  while (file_handles.has(next_file_handle)) {
+    next_file_handle = (next_file_handle + 1) | 0;
+  }
+  return file_handle;
+}
+
+// console
+const STDIN = newFileHandle();
+const STDOUT = newFileHandle();
+const STDERR = newFileHandle();
 /**
  *  @param {BigInt} file
  *  @param {BigInt} bytes_ptr
@@ -12,9 +31,9 @@ function wasm_write(file, bytes_ptr, bytes_count) {
   const memory = wasm_instance.exports.memory.buffer;
   const bytes = new Uint8Array(memory, Number(bytes_ptr), Number(bytes_count));
   const string = utf8_decoder.decode(bytes);
-  if (file == 1) {
+  if (file == STDOUT) {
     console.log(string);
-  } else if (file == 2) {
+  } else if (file == STDERR) {
     console.error(string);
   } else {
     throw RangeError(`Cannot write '${string}' to unknown file: ${file}`);
