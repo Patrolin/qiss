@@ -76,19 +76,13 @@ async function waitForNextFrame(savePower) {
   }
 }
 const CANVAS_EVENT = -1;
-const CLICK_EVENT = 0;
+const RESIZE_EVENT = 0
+const CLICK_EVENT = 1;
 self.onmessage = async ({data}) => {
-  //console.log("event", data);
-  switch (data.type) {
-  case CANVAS_EVENT: {
+  if (data.type == CANVAS_EVENT) {
     wasm_canvas = data.canvas;
-  } break;
-  case CLICK_EVENT: {
+  } else {
     wasm_instance.exports.on_event(BigInt(data.type), BigInt(data.ns), BigInt(data.x), BigInt(data.y));
-  } break;
-  default: {
-    throw new Error(`Unknown event type: ${data.type}`);
-  } break;
   }
   savePower_resolve();
 }
