@@ -22,9 +22,10 @@ on_event :: proc "c" (type, ns, x, y: int) {
 	printf("odin: %, %, %, %", f_int(&type), f_int(&ns), f_int(&x), f_int(&y))
 }
 @(export)
-on_tick :: proc "c" () {
+on_tick :: proc "c" () -> (save_power: bool) {
 	context = g_default_context
 	gl_clearColor(g_gl, 0, 0, 0, 1)
 	gl_clear(g_gl, .COLOR_BUFFER_BIT)
 	free_all(context.temp_allocator)
+	return true
 }

@@ -61,6 +61,19 @@ const glProcs = Object.fromEntries([
 }]));
 
 // window
+/** @type {(value: any) => void} */
+let savePower_resolve = () => {};
+/**
+ * @param {boolean} savePower
+ * @return {Promise<void>} */
+async function waitForNextFrame(savePower) {
+  if (savePower) {
+    await new Promise((resolve) => savePower_resolve = resolve);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+  } else {
+    await new Promise((resolve) => setTimeout(resolve, 17));
+  }
+}
 const CANVAS_EVENT = -1;
 const CLICK_EVENT = 0;
 self.onmessage = async ({data}) => {
@@ -76,6 +89,7 @@ self.onmessage = async ({data}) => {
     throw new Error(`Unknown event type: ${data.type}`);
   } break;
   }
+  savePower_resolve();
 }
 
 // run the wasm
@@ -95,10 +109,7 @@ const wasm_promise = WebAssembly.instantiateStreaming(wasm_file, WASM_IMPORTS);
   instance.exports.on_start();
   wasm_instance = instance;
   while (true) {
-    instance.exports.on_tick();
-    await new Promise((resolve) => {
-      setTimeout(resolve, 17);
-      //requestAnimationFrame(resolve);
-    });
+    const savePower = instance.exports.on_tick();
+    await waitForNextFrame(savePower);
   }
 })();
