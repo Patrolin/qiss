@@ -28,7 +28,7 @@ bump_allocator_proc :: proc(
 	#partial switch mode {
 	case .Alloc, .Alloc_Non_Zeroed, .Resize, .Resize_Non_Zeroed:
 		{
-			alignment_mask := uintptr(16 - 1)
+			alignment_mask := uintptr(8 - 1)
 			next_ptr := (bump.next + alignment_mask) & ~alignment_mask
 			next_end := next_ptr + uintptr(size)
 			bump.next = next_end
