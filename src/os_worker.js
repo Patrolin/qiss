@@ -48,8 +48,9 @@ function wasm_write(file, bytes_ptr, bytes_count) {
 
 // opengl
 function wasm_createWebGLContext() {
-  const gl = wasm_canvas.getContext("webgl");
+  const gl = wasm_canvas.getContext("webgl2");
   if (gl == null) throw new Error("Your browser does not support WebGL!");
+  console.log(gl.getParameter(gl.VERSION));
   return BigInt(newHandle(gl));
 }
 const glProcs = Object.fromEntries([
