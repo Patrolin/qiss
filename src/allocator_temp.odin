@@ -9,14 +9,12 @@ ArenaAllocator :: struct {
 arena_allocator :: proc(size: int) -> runtime.Allocator {
 	data := os_grow_heap(size)
 	ptr := uintptr(raw_data(data))
-	wasm_print_int(ptr)
-	info := (^ArenaAllocator)(ptr)
-	info.next = ptr + size_of(ArenaAllocator)
-	info.end = ptr + uintptr(len(data))
-	info.start = ptr
+	arena := (^ArenaAllocator)(ptr)
+	arena.next = ptr + size_of(ArenaAllocator)
+	arena.end = ptr + uintptr(len(data))
+	arena.start = arena.next
 	return runtime.Allocator{arena_allocator_proc, rawptr(ptr)}
 }
-g_lock := false
 arena_allocator_proc :: proc(
 	allocator_data: rawptr,
 	mode: runtime.Allocator_Mode,
@@ -28,8 +26,6 @@ arena_allocator_proc :: proc(
 	data: []byte,
 	err: runtime.Allocator_Error,
 ) {
-	assert(g_lock == false)
-	g_lock = true
 	arena := (^ArenaAllocator)(allocator_data)
 	#partial switch mode {
 	case .Alloc, .Alloc_Non_Zeroed, .Resize, .Resize_Non_Zeroed:
@@ -53,5 +49,5 @@ arena_allocator_proc :: proc(
 	case:
 		err = .Mode_Not_Implemented
 	}
-	g_lock = false
+	return
 }

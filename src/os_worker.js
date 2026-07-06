@@ -33,9 +33,9 @@ function wasm_write(file, bytes_ptr, bytes_count) {
   /** @type {WebAssembly.Memory} */
   const memory = wasm_instance.exports.memory;
   const slice = new Uint8Array(memory.buffer, Number(bytes_ptr), Number(bytes_count));
-  const bytes = new Uint8Array(slice);
-  console.log({slice, bytes})
-  const string = utf8_decoder.decode(bytes);
+  //const bytes = new Uint8Array(slice);
+  //console.log({slice, bytes})
+  const string = utf8_decoder.decode(slice);
   if (file == STDOUT) {
     console.log(string);
   } else if (file == STDERR) {
