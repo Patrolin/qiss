@@ -30,8 +30,11 @@ const STDERR = newHandle();
  *  @param {BigInt} bytes_ptr
  *  @param {BigInt} bytes_count */
 function wasm_write(file, bytes_ptr, bytes_count) {
-  const memory = wasm_instance.exports.memory.buffer;
-  const bytes = new Uint8Array(memory, Number(bytes_ptr), Number(bytes_count));
+  /** @type {WebAssembly.Memory} */
+  const memory = wasm_instance.exports.memory;
+  const slice = new Uint8Array(memory.buffer, Number(bytes_ptr), Number(bytes_count));
+  const bytes = new Uint8Array(slice);
+  console.log({slice, bytes})
   const string = utf8_decoder.decode(bytes);
   if (file == STDOUT) {
     console.log(string);
@@ -70,7 +73,7 @@ self.onmessage = async ({data}) => {
     wasm_instance.exports.on_event(BigInt(data.type), BigInt(data.ns), BigInt(data.x), BigInt(data.y));
   } break;
   default: {
-    throw new Error(`Uknown event type: ${data.type}`);
+    throw new Error(`Unknown event type: ${data.type}`);
   } break;
   }
 }
@@ -88,7 +91,7 @@ const utf8_decoder = new TextDecoder();
 const wasm_promise = WebAssembly.instantiateStreaming(wasm_file, WASM_IMPORTS);
 (async () => {
   const instance = (await wasm_promise).instance;
-  console.log(wasm_instance);
+  console.log(instance);
   instance.exports.on_start();
   wasm_instance = instance;
   while (true) {

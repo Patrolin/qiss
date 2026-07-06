@@ -8,7 +8,7 @@ g_gl: FileHandle
 on_start :: proc "c" () {
 	context = runtime.default_context()
 	context.temp_allocator = arena_allocator(1024 * 1024)
-	context.allocator = bump_allocator()
+	//context.allocator = bump_allocator()
 	g_default_context = context
 	g_gl = wasm_createWebGLContext()
 }
