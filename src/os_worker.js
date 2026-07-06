@@ -63,7 +63,7 @@ const glProcs = Object.fromEntries([
 // window
 /** @type {(value: any) => void} */
 let savePower_resolve = () => {};
-/**
+/** Allow browser to process inputs and wait for next frame
  * @param {boolean} savePower
  * @return {Promise<void>} */
 async function waitForNextFrame(savePower) {

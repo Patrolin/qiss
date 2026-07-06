@@ -46,6 +46,7 @@ arena_allocator_proc :: proc(
 	case .Free_All:
 		arena.next = arena.start
 	case .Free:
+	/* noop */
 	case:
 		err = .Mode_Not_Implemented
 	}

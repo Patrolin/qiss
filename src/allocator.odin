@@ -8,9 +8,9 @@ BumpAllocator :: struct {
 bump_allocator :: proc() -> runtime.Allocator {
 	data := os_grow_heap(size_of(BumpAllocator))
 	ptr := uintptr(raw_data(data))
-	info := (^BumpAllocator)(ptr)
-	info.next = ptr + size_of(BumpAllocator)
-	info.end = ptr + uintptr(len(data))
+	bump := (^BumpAllocator)(ptr)
+	bump.next = ptr + size_of(BumpAllocator)
+	bump.end = ptr + uintptr(len(data))
 	return runtime.Allocator{bump_allocator_proc, rawptr(ptr)}
 }
 bump_allocator_proc :: proc(
@@ -21,29 +21,30 @@ bump_allocator_proc :: proc(
 	old_size: int,
 	loc := #caller_location,
 ) -> (
-	[]byte,
-	runtime.Allocator_Error,
+	data: []byte,
+	err: runtime.Allocator_Error,
 ) {
-	info := (^BumpAllocator)(allocator_data)
+	bump := (^BumpAllocator)(allocator_data)
 	#partial switch mode {
 	case .Alloc, .Alloc_Non_Zeroed, .Resize, .Resize_Non_Zeroed:
 		{
-			next_ptr := (uintptr(info.next) + 15) & ~uintptr(15)
-			info.next = next_ptr
-			if next_ptr > info.end {
+			alignment_mask := uintptr(16 - 1)
+			next_ptr := (bump.next + alignment_mask) & ~alignment_mask
+			next_end := next_ptr + uintptr(size)
+			bump.next = next_end
+			if next_end > bump.end {
 				next_heap_chunk := os_grow_heap(size)
-				info.end = uintptr(&next_heap_chunk[len(next_heap_chunk)])
+				bump.end = uintptr(&next_heap_chunk[len(next_heap_chunk)])
 			}
-			data := ([^]u8)(next_ptr)[:size]
+			data = ([^]u8)(next_ptr)[:size]
 			if old_memory != nil {
 				copy(data, ([^]u8)(old_memory)[:old_size])
 				// TODO: add to free list
 			}
-			return data, nil
 		}
 	case .Free:
-		return nil, .Mode_Not_Implemented
+		err = .Mode_Not_Implemented
 	case:
-		return nil, .Mode_Not_Implemented
+		err = .Mode_Not_Implemented
 	}
 }
