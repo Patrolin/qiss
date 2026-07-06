@@ -47,4 +47,5 @@ bump_allocator_proc :: proc(
 	case:
 		err = .Mode_Not_Implemented
 	}
+	return
 }

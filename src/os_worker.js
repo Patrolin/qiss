@@ -95,7 +95,7 @@ self.onmessage = async ({data}) => {
 // run the wasm
 const WASM_IMPORTS = {
   env: {
-    wasm_print_int: console.log,
+    wasm_printInt: console.log,
     wasm_write,
     wasm_createWebGLContext,
     ...glProcs,
