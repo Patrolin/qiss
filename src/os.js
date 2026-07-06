@@ -24,13 +24,13 @@ const STDIN = newHandle();
 const STDOUT = newHandle();
 const STDERR = newHandle();
 /**
- *  @param {BigInt} file
- *  @param {BigInt} bytes_ptr
- *  @param {BigInt} bytes_count */
-function wasm_write(file, bytes_ptr, bytes_count) {
+ * @param {BigInt} file
+ * @param {BigInt} slice_ptr
+ * @param {BigInt} slice_count */
+function wasm_write(file, slice_ptr, slice_count) {
   /** @type {WebAssembly.Memory} */
   const memory = wasm_instance.exports.memory;
-  const slice = new Uint8Array(memory.buffer, Number(bytes_ptr), Number(bytes_count));
+  const slice = new Uint8Array(memory.buffer, Number(slice_ptr), Number(slice_count));
   //const bytes = new Uint8Array(slice);
   //console.log({slice, bytes})
   const string = utf8_decoder.decode(slice);
@@ -41,7 +41,7 @@ function wasm_write(file, bytes_ptr, bytes_count) {
   } else {
     throw RangeError(`Cannot write '${string}' to unknown file: ${file}`);
   }
-  return bytes_count;
+  return slice_count;
 }
 
 // opengl
