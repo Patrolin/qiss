@@ -1,4 +1,5 @@
 package main
+import "base:intrinsics"
 import "base:runtime"
 
 ArenaAllocator :: struct {
@@ -38,6 +39,7 @@ arena_allocator_proc :: proc(
 				err = .Out_Of_Memory
 			} else {
 				data = ([^]u8)(next_ptr)[:size]
+				intrinsics.mem_zero(rawptr(next_ptr), size)
 				if old_memory != nil {
 					copy(data, ([^]u8)(old_memory)[:old_size])
 				}

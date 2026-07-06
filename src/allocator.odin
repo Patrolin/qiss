@@ -1,4 +1,5 @@
 package main
+import "base:intrinsics"
 import "base:runtime"
 
 BumpAllocator :: struct {
@@ -37,6 +38,7 @@ bump_allocator_proc :: proc(
 				bump.end = uintptr(&next_heap_chunk[len(next_heap_chunk)])
 			}
 			data = ([^]u8)(next_ptr)[:size]
+			intrinsics.mem_zero(rawptr(next_ptr), size)
 			if old_memory != nil {
 				copy(data, ([^]u8)(old_memory)[:old_size])
 				// TODO: add to free list
