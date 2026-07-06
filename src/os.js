@@ -74,22 +74,38 @@ async function waitForNextFrame(savePower) {
   }
 }
 const RESIZE_EVENT = 0;
-const CLICK_EVENT = 1;
+const POINTER_MOVE_EVENT = 1;
+const POINTER_DOWN_EVENT = 2;
+const POINTER_UP_EVENT = 3;
+const POINTER_CANCEL_EVENT = 4;
 function handleEvent(...args) {
   wasm_instance.exports.on_event(...args.map(BigInt));
   savePower_resolve();
 }
 window.addEventListener("resize", (event) => {
   const ns = Math.round(performance.now() * 1e6);
-  const x = document.body.clientWidth;
-  const y = document.body.clientHeight;
-  handleEvent(RESIZE_EVENT, ns, x, y);
+  const {clientWidth, clientHeight} = document.body;
+  handleEvent(RESIZE_EVENT, ns, clientWidth, clientHeight);
 });
-window.addEventListener("click", (event) => {
+window.addEventListener("pointermove", (event) => {
   const ns = Math.round(performance.now() * 1e6);
-  const x = event.clientX;
-  const y = event.clientY;
-  handleEvent(CLICK_EVENT, ns, x, y);
+  const {clientX, clientY} = event;
+  handleEvent(POINTER_MOVE_EVENT, ns, clientX, clientY);
+});
+window.addEventListener("pointerdown", (event) => {
+  const ns = Math.round(performance.now() * 1e6);
+  const {clientX, clientY} = event;
+  handleEvent(POINTER_DOWN_EVENT, ns, clientX, clientY);
+});
+window.addEventListener("pointerup", (event) => {
+  const ns = Math.round(performance.now() * 1e6);
+  const {clientX, clientY} = event;
+  handleEvent(POINTER_UP_EVENT, ns, clientX, clientY);
+});
+window.addEventListener("pointercancel", (event) => {
+  const ns = Math.round(performance.now() * 1e6);
+  const {clientX, clientY} = event;
+  handleEvent(POINTER_CANCEL_EVENT, ns, clientX, clientY);
 });
 
 // run the wasm
