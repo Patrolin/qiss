@@ -14,11 +14,11 @@ on_start :: proc "c" () {
 }
 @(export)
 on_event :: proc "c" (type, ns, x, y: int) {
+	context = g_default_context
 	type := type
 	ns := ns
 	x := x
 	y := y
-	context = g_default_context
 	printf("odin: %, %, %, %", f_int(&type), f_int(&ns), f_int(&x), f_int(&y))
 }
 @(export)
