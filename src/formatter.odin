@@ -39,15 +39,15 @@ tprintf :: proc(format: string, values: ..Formatter) -> string {
 
 // formatters
 Formatter :: struct {
+	value:     u64,
 	procedure: proc(sb: ^StringBuilder, formatter: ^Formatter),
-	ptr:       rawptr,
 	//options:   [2]u32,
 }
-f_u64 :: proc(ptr: ^u64) -> Formatter {
-	return Formatter{f_u64_proc, ptr}
+f_uint :: proc(value: u64) -> Formatter {
+	return Formatter{value, f_uint_proc}
 }
-f_u64_proc :: proc(sb: ^StringBuilder, formatter: ^Formatter) {
-	value := (^u64)(formatter.ptr)^
+f_uint_proc :: proc(sb: ^StringBuilder, formatter: ^Formatter) {
+	value := formatter.value
 	buffer: [20]byte
 	i := 19
 	for {
@@ -59,11 +59,11 @@ f_u64_proc :: proc(sb: ^StringBuilder, formatter: ^Formatter) {
 	}
 	sb_print(sb, string(buffer[i:]))
 }
-f_int :: proc(ptr: ^int) -> Formatter {
-	return Formatter{f_int_proc, ptr}
+f_int :: proc(#any_int value: i64) -> Formatter {
+	return Formatter{u64(value), f_int_proc}
 }
 f_int_proc :: proc(sb: ^StringBuilder, formatter: ^Formatter) {
-	value := (^int)(formatter.ptr)^
+	value := i64(formatter.value)
 	buffer: [19]byte
 	i := 18
 	for {
