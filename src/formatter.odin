@@ -1,6 +1,6 @@
 package main
-
 import "base:runtime"
+
 // string builder
 StringBuilder :: [dynamic]u8
 sb_print :: proc(sb: ^StringBuilder, str: string) {
