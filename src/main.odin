@@ -16,9 +16,7 @@ on_start :: proc "c" () {
 on_event :: proc "c" (type: WindowEventType, ns, x, y: int) {
 	context = g_default_context
 	if (type == .PointerMove) {return}
-	printf("one: '%'", f_int(1))
-	printf("zero: '%'", f_int(0))
-	printf("mone: '%'", f_int(-1))
+	printf("str: '%'", f_str("foobar"))
 	printf("odin: %, %, %, %", f_int(type), f_int(ns), f_int(x), f_int(y))
 }
 @(export)

@@ -40,11 +40,18 @@ tprintf :: proc(format: string, values: ..Formatter) -> string {
 // formatters
 Formatter :: struct {
 	value:     u64,
+	options:   u64,
 	procedure: proc(sb: ^StringBuilder, formatter: ^Formatter),
-	//options:   [2]u32,
+}
+f_str :: proc(value: string) -> Formatter {
+	return Formatter{u64(uintptr(raw_data(value))), u64(len(value)), f_str_proc}
+}
+f_str_proc :: proc(sb: ^StringBuilder, formatter: ^Formatter) {
+	str := (runtime.Raw_String){([^]u8)(uintptr(formatter.value)), int(formatter.options)}
+	sb_print(sb, transmute(string)str)
 }
 f_uint :: proc(value: u64) -> Formatter {
-	return Formatter{value, f_uint_proc}
+	return Formatter{value, {}, f_uint_proc}
 }
 f_uint_proc :: proc(sb: ^StringBuilder, formatter: ^Formatter) {
 	value := formatter.value
@@ -60,7 +67,7 @@ f_uint_proc :: proc(sb: ^StringBuilder, formatter: ^Formatter) {
 	sb_print(sb, string(buffer[i:]))
 }
 f_int :: proc(#any_int value: i64) -> Formatter {
-	return Formatter{u64(value), f_int_proc}
+	return Formatter{u64(value), {}, f_int_proc}
 }
 f_int_proc :: proc(sb: ^StringBuilder, formatter: ^Formatter) {
 	value := i64(formatter.value)
