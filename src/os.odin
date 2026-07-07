@@ -8,13 +8,7 @@ when ODIN_ARCH == .wasm64p32 {
 	foreign env {
 		wasm_printInt :: proc(#any_int value: int) ---
 		wasm_write :: proc(file: FileHandle, bytes_ptr: [^]byte, bytes_count: int) -> int ---
-		wasm_createWebGLContext :: proc() -> FileHandle ---
-		gl_clearColor :: proc(gl: FileHandle, r, g, b, a: f64) ---
-		gl_clear :: proc(gl: FileHandle, buffer_type: GL_BUFFER_TYPE) ---
 	}
-}
-GL_BUFFER_TYPE :: enum int {
-	COLOR_BUFFER_BIT = 0x4000,
 }
 
 // allocations
@@ -56,4 +50,23 @@ WindowEventType :: enum int {
 	PointerDown,
 	PointerUp,
 	PointerCancel,
+}
+
+// gl
+GlHandle :: distinct FileHandle
+when ODIN_ARCH == .wasm64p32 {
+	@(default_calling_convention = "c")
+	foreign env {
+		wasm_createWebGLContext :: proc() -> GlHandle ---
+		gl_clearColor :: proc(gl: GlHandle, r, g, b, a: f64) ---
+		gl_clear :: proc(gl: GlHandle, buffer_type: GlBufferType) ---
+		wasm_compileShader :: proc(gl: GlHandle, type: GlShaderType, source: string) -> GlHandle ---
+	}
+}
+GlShaderType :: enum int {
+	FRAGMENT_SHADER = 35632,
+	VERTEX_SHADER   = 35633,
+}
+GlBufferType :: enum int {
+	COLOR_BUFFER_BIT = 0x4000,
 }
