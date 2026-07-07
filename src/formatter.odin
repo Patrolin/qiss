@@ -49,7 +49,7 @@ f_uint :: proc(value: u64) -> Formatter {
 f_uint_proc :: proc(sb: ^StringBuilder, formatter: ^Formatter) {
 	value := formatter.value
 	buffer: [20]byte
-	i := 19
+	i := len(buffer) - 1
 	for {
 		digit := value % 10
 		value = value / 10
@@ -64,14 +64,25 @@ f_int :: proc(#any_int value: i64) -> Formatter {
 }
 f_int_proc :: proc(sb: ^StringBuilder, formatter: ^Formatter) {
 	value := i64(formatter.value)
-	buffer: [19]byte
-	i := 18
-	for {
+	buffer: [20]byte
+	i := len(buffer)
+	is_negative := value < 0
+	if value <= 0 {
 		digit := value % 10
 		value = value / 10
-		buffer[i] = byte('0' + digit)
-		if i < 0 || value == 0 {break}
 		i -= 1
+		buffer[i] = byte('0' - digit)
+		value = -value
+	}
+	for i >= 0 && value != 0 {
+		digit := value % 10
+		value = value / 10
+		i -= 1
+		buffer[i] = byte('0' + digit)
+	}
+	if is_negative {
+		i -= 1
+		buffer[i] = '-'
 	}
 	sb_print(sb, string(buffer[i:]))
 }
