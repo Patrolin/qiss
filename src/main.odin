@@ -7,6 +7,10 @@ gl: GlHandle
 vertexShader :: #load("s_vertex.glsl", string)
 fragmentShader :: #load("s_fragment.glsl", string)
 
+Vertex :: struct {
+	position: [3]f32,
+}
+
 // exports
 @(export)
 on_start :: proc "c" () {
@@ -18,7 +22,7 @@ on_start :: proc "c" () {
 	v_shader := glp_compileShader(gl, .VERTEX_SHADER, raw_data(vertexShader), len(vertexShader))
 	f_shader := glp_compileShader(gl, .FRAGMENT_SHADER, raw_data(fragmentShader), len(fragmentShader))
 	program := glp_linkProgram(gl, v_shader, f_shader)
-
+	gl_useProgram(gl, program)
 }
 @(export)
 on_event :: proc "c" (type: WindowEventType, ns, x, y: int) {
@@ -31,6 +35,9 @@ on_tick :: proc "c" () -> (save_power: bool) {
 	context = defaultContext
 	gl_clearColor(gl, 0, 0, 0, 1)
 	gl_clear(gl, .COLOR_BUFFER_BIT)
+
+	vertices := []Vertex{{{0, 0, 0}}, {{1, 0, 0}}, {{1, 1, 0}}, {{0, 1, 0}}}
+
 	free_all(context.temp_allocator)
 	return true
 }

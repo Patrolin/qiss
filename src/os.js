@@ -24,7 +24,7 @@ function string(slice_data, slice_count) {
 }
 /**
  * @param {BigInt} slice_ptr
- * @return {number[]} */
+ * @return {BigInt[]} */
 function sliceOfInt(slice_ptr) {
   /** @type {WebAssembly.Memory} */
   const memory = wasm_instance.exports.memory;
@@ -33,11 +33,11 @@ function sliceOfInt(slice_ptr) {
   const slice_count = Number(slice[1]);
 
   const data_bigints = new BigUint64Array(memory.buffer, Number(slice_data), slice_count);
-  const data = new Array(data_bigints.length);
-  for (let i = 0; i < data_bigints.length; i++) {
-    data[i] = Number(data_bigints[i]);
-  }
-  return data;
+  //const data = new Array(data_bigints.length);
+  //for (let i = 0; i < data_bigints.length; i++) {
+  //  data[i] = Number(data_bigints[i]);
+  //}
+  return data_bigints;
 }
 
 // files
@@ -66,57 +66,16 @@ const STDERR = newHandle();
  * @param {BigInt} slice_count
  * @return {BigInt} */
 function wasm_write(file, slice_data, slice_count) {
-  const string = string(slice_data, slice_count)
+  const str = string(slice_data, slice_count)
   if (file == STDOUT) {
-    console.log(string);
+    console.log(str);
   } else if (file == STDERR) {
-    console.error(string);
+    console.error(str);
   } else {
-    throw RangeError(`Cannot write '${string}' to unknown file: ${file}`);
+    throw RangeError(`Cannot write '${str}' to unknown file: ${file}`);
   }
   return slice_count;
 }
-
-// opengl
-/** @return {BigInt} */
-function glp_createWebGLContext() {
-  const gl = document.querySelector("canvas").getContext("webgl2"/*, {antialias: false}*/);
-  if (gl == null) throw new Error("Your browser does not support WebGL!");
-  console.log(gl.getParameter(gl.VERSION));
-  return BigInt(newHandle(gl));
-}
-/**
- * @param {number} glHandle
- * @param {number} shader_type
- * @param {number} slice_data
- * @param {number} slice_count
- * @return {BigInt} */
-function glp_compileShader(glHandle, shader_type, slice_data, slice_count) {
-  /** @type {WebGL2RenderingContext} */
-  const gl = handles.get(Number(glHandle));
-  const shader = gl.createShader(Number(shader_type));
-  assert(shader != null, "shader != null");
-  const shaderSource = string(slice_data, slice_count);
-  gl.shaderSource(shader, shaderSource);
-  gl.compileShader(shader);
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    console.log(shaderSource);
-    throw new Error(gl.getShaderInfoLog(shader));
-  }
-  return BigInt(newHandle(shader));
-}
-function glp_linkProgram(glHandle, shaders_slice_ptr) {
-  // TODO: link the program
-  console.log(sliceOfInt(shaders_slice_ptr))
-  return BigInt(newHandle(0));
-}
-const glProcs = Object.fromEntries([
-  "clearColor",
-  "clear"
-].map(key => [`gl_${key}`, (glHandle, ...args) => {
-  const gl = handles.get(Number(glHandle));
-  gl[key](...args.map(v => (typeof v === "bigint" ? Number(v) : v)));
-}]));
 
 // window
 /** @type {(value: any) => void} */
@@ -167,6 +126,64 @@ window.addEventListener("pointercancel", (event) => {
   handleEvent(POINTER_CANCEL_EVENT, ns, clientX, clientY);
 });
 
+// opengl
+/** @return {BigInt} */
+function glp_createWebGLContext() {
+  const gl = document.querySelector("canvas").getContext("webgl2"/*, {antialias: false}*/);
+  if (gl == null) throw new Error("Your browser does not support WebGL!");
+  console.log(gl.getParameter(gl.VERSION));
+  return BigInt(newHandle(gl));
+}
+/**
+ * @param {number} gl_handle
+ * @param {number} shader_type
+ * @param {number} slice_data
+ * @param {number} slice_count
+ * @return {BigInt} */
+function glp_compileShader(gl_handle, shader_type, slice_data, slice_count) {
+  /** @type {WebGL2RenderingContext} */
+  const gl = handles.get(Number(gl_handle));
+  const shader = gl.createShader(Number(shader_type));
+  assert(shader != null, "shader != null");
+  const shaderSource = string(slice_data, slice_count);
+  gl.shaderSource(shader, shaderSource);
+  gl.compileShader(shader);
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    console.log(shaderSource);
+    throw new Error(gl.getShaderInfoLog(shader));
+  }
+  return BigInt(newHandle(shader));
+}
+function glp_linkProgram(glHandle, shaders_handles_ptr) {
+  /** @type {WebGL2RenderingContext} */
+  const gl = handles.get(Number(glHandle));
+  const program = gl.createProgram();
+  for (const shader_handle of sliceOfInt(shaders_handles_ptr)) {
+    const shader = handles.get(Number(shader_handle));
+    gl.attachShader(program, shader);
+    gl.deleteShader(shader);
+  }
+  gl.linkProgram(program);
+  gl.validateProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    const info = gl.getProgramInfoLog(program);
+    throw new Error(info);
+  }
+  return BigInt(newHandle(program));
+}
+function gl_useProgram(gl_handle, program_handle) {
+  const gl = handles.get(Number(gl_handle));
+  const program = handles.get(Number(program_handle));
+  gl.useProgram(program);
+}
+const simpleGlProcs = Object.fromEntries([
+  "clearColor",
+  "clear",
+].map(key => [`gl_${key}`, (gl_handle, ...args) => {
+  const gl = handles.get(Number(gl_handle));
+  gl[key](...args.map(v => (typeof v === "bigint" ? Number(v) : v)));
+}]));
+
 // run the wasm
 const WASM_IMPORTS = {
   env: {
@@ -175,7 +192,8 @@ const WASM_IMPORTS = {
     glp_createWebGLContext,
     glp_compileShader,
     glp_linkProgram,
-    ...glProcs,
+    gl_useProgram,
+    ...simpleGlProcs,
   },
 };
 const utf8_decoder = new TextDecoder();

@@ -62,6 +62,7 @@ when ODIN_ARCH == .wasm64p32 {
 		gl_clear :: proc(gl: GlHandle, buffer_type: GlBufferType) ---
 		glp_compileShader :: proc(gl: GlHandle, shader_type: GlShaderType, source_ptr: [^]byte, source_count: int) -> GlHandle ---
 		glp_linkProgram :: proc(gl: GlHandle, shaders: ..GlHandle) -> GlHandle ---
+		gl_useProgram :: proc(gl: GlHandle, program: GlHandle) ---
 	}
 }
 GlShaderType :: enum int {
