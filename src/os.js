@@ -3,6 +3,43 @@ const wasm_file = fetch("/dist/opengl.wasm", {mode: "no-cors"});
 /** @type {WebAssembly.Instance} */
 let wasm_instance;
 
+// builtins
+/**
+ * @param {boolean} condition
+ * @param {string|undefined} message */
+function assert(condition, message) {
+  if (!condition) throw new Error(message);
+}
+/**
+ * @param {BigInt} slice_data
+ * @param {BigInt} slice_count
+ * @return {string} */
+function string(slice_data, slice_count) {
+  /** @type {WebAssembly.Memory} */
+  const memory = wasm_instance.exports.memory;
+  const slice = new Uint8Array(memory.buffer, Number(slice_data), Number(slice_count));
+  //const bytes = new Uint8Array(slice);
+  //console.log({slice, bytes})
+  return utf8_decoder.decode(slice);
+}
+/**
+ * @param {BigInt} slice_ptr
+ * @return {number[]} */
+function sliceOfInt(slice_ptr) {
+  /** @type {WebAssembly.Memory} */
+  const memory = wasm_instance.exports.memory;
+  const slice = new BigUint64Array(memory.buffer, Number(slice_ptr), 2);
+  const slice_data = Number(slice[0]);
+  const slice_count = Number(slice[1]);
+
+  const data_bigints = new BigUint64Array(memory.buffer, Number(slice_data), slice_count);
+  const data = new Array(data_bigints.length);
+  for (let i = 0; i < data_bigints.length; i++) {
+    data[i] = Number(data_bigints[i]);
+  }
+  return data;
+}
+
 // files
 /** @type {Map<number, any>} */
 const handles = new Map();
@@ -25,15 +62,11 @@ const STDOUT = newHandle();
 const STDERR = newHandle();
 /**
  * @param {BigInt} file
- * @param {BigInt} slice_ptr
- * @param {BigInt} slice_count */
-function wasm_write(file, slice_ptr, slice_count) {
-  /** @type {WebAssembly.Memory} */
-  const memory = wasm_instance.exports.memory;
-  const slice = new Uint8Array(memory.buffer, Number(slice_ptr), Number(slice_count));
-  //const bytes = new Uint8Array(slice);
-  //console.log({slice, bytes})
-  const string = utf8_decoder.decode(slice);
+ * @param {BigInt} slice_data
+ * @param {BigInt} slice_count
+ * @return {BigInt} */
+function wasm_write(file, slice_data, slice_count) {
+  const string = string(slice_data, slice_count)
   if (file == STDOUT) {
     console.log(string);
   } else if (file == STDERR) {
@@ -45,11 +78,37 @@ function wasm_write(file, slice_ptr, slice_count) {
 }
 
 // opengl
-function wasm_createWebGLContext() {
+/** @return {BigInt} */
+function glp_createWebGLContext() {
   const gl = document.querySelector("canvas").getContext("webgl2"/*, {antialias: false}*/);
   if (gl == null) throw new Error("Your browser does not support WebGL!");
   console.log(gl.getParameter(gl.VERSION));
   return BigInt(newHandle(gl));
+}
+/**
+ * @param {number} glHandle
+ * @param {number} shader_type
+ * @param {number} slice_data
+ * @param {number} slice_count
+ * @return {BigInt} */
+function glp_compileShader(glHandle, shader_type, slice_data, slice_count) {
+  /** @type {WebGL2RenderingContext} */
+  const gl = handles.get(Number(glHandle));
+  const shader = gl.createShader(Number(shader_type));
+  assert(shader != null, "shader != null");
+  const shaderSource = string(slice_data, slice_count);
+  gl.shaderSource(shader, shaderSource);
+  gl.compileShader(shader);
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    console.log(shaderSource);
+    throw new Error(gl.getShaderInfoLog(shader));
+  }
+  return BigInt(newHandle(shader));
+}
+function glp_linkProgram(glHandle, shaders_slice_ptr) {
+  // TODO: link the program
+  console.log(sliceOfInt(shaders_slice_ptr))
+  return BigInt(newHandle(0));
 }
 const glProcs = Object.fromEntries([
   "clearColor",
@@ -113,19 +172,20 @@ const WASM_IMPORTS = {
   env: {
     wasm_printInt: console.log,
     wasm_write,
-    wasm_createWebGLContext,
+    glp_createWebGLContext,
+    glp_compileShader,
+    glp_linkProgram,
     ...glProcs,
   },
 };
 const utf8_decoder = new TextDecoder();
 const wasm_promise = WebAssembly.instantiateStreaming(wasm_file, WASM_IMPORTS);
 (async () => {
-  const instance = (await wasm_promise).instance;
-  console.log(instance);
-  instance.exports.on_start();
-  wasm_instance = instance;
+  wasm_instance = (await wasm_promise).instance;
+  console.log(wasm_instance);
+  wasm_instance.exports.on_start();
   while (true) {
-    const savePower = instance.exports.on_tick();
+    const savePower = wasm_instance.exports.on_tick();
     await waitForNextFrame(savePower);
   }
 })();

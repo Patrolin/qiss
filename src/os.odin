@@ -52,15 +52,16 @@ WindowEventType :: enum int {
 	PointerCancel,
 }
 
-// gl
+// opengl
 GlHandle :: distinct FileHandle
 when ODIN_ARCH == .wasm64p32 {
 	@(default_calling_convention = "c")
 	foreign env {
-		wasm_createWebGLContext :: proc() -> GlHandle ---
+		glp_createWebGLContext :: proc() -> GlHandle ---
 		gl_clearColor :: proc(gl: GlHandle, r, g, b, a: f64) ---
 		gl_clear :: proc(gl: GlHandle, buffer_type: GlBufferType) ---
-		wasm_compileShader :: proc(gl: GlHandle, type: GlShaderType, source: string) -> GlHandle ---
+		glp_compileShader :: proc(gl: GlHandle, shader_type: GlShaderType, source_ptr: [^]byte, source_count: int) -> GlHandle ---
+		glp_linkProgram :: proc(gl: GlHandle, shaders: ..GlHandle) -> GlHandle ---
 	}
 }
 GlShaderType :: enum int {
