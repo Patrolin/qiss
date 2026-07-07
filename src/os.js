@@ -100,11 +100,12 @@ function handleEvent(...args) {
   wasm_instance.exports.on_event(...args.map(BigInt));
   savePower_resolve();
 }
-window.addEventListener("resize", (event) => {
+function onResize() {
   const ns = Math.round(performance.now() * 1e6);
   const {clientWidth, clientHeight} = document.body;
   handleEvent(RESIZE_EVENT, ns, clientWidth, clientHeight);
-});
+}
+window.addEventListener("resize", onResize);
 window.addEventListener("pointermove", (event) => {
   const ns = Math.round(performance.now() * 1e6);
   const {clientX, clientY} = event;
@@ -129,7 +130,7 @@ window.addEventListener("pointercancel", (event) => {
 // opengl
 /** @return {BigInt} */
 function glp_createWebGLContext() {
-  const gl = document.querySelector("canvas").getContext("webgl2"/*, {antialias: false}*/);
+  const gl = document.querySelector("canvas").getContext("webgl2", {antialias: false});
   if (gl == null) throw new Error("Your browser does not support WebGL!");
   console.log(gl.getParameter(gl.VERSION));
   return BigInt(newHandle(gl));
@@ -177,6 +178,7 @@ function gl_useProgram(gl_handle, program_handle) {
   gl.useProgram(program);
 }
 const simpleGlProcs = Object.fromEntries([
+  "viewport",
   "clearColor",
   "clear",
 ].map(key => [`gl_${key}`, (gl_handle, ...args) => {
@@ -202,6 +204,7 @@ const wasm_promise = WebAssembly.instantiateStreaming(wasm_file, WASM_IMPORTS);
   wasm_instance = (await wasm_promise).instance;
   console.log(wasm_instance);
   wasm_instance.exports.on_start();
+  onResize();
   while (true) {
     const savePower = wasm_instance.exports.on_tick();
     await waitForNextFrame(savePower);

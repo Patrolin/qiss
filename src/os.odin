@@ -58,11 +58,19 @@ when ODIN_ARCH == .wasm64p32 {
 	@(default_calling_convention = "c")
 	foreign env {
 		glp_createWebGLContext :: proc() -> GlHandle ---
+		gl_viewport :: proc(gl: GlHandle, x, y, width, height: int) ---
 		gl_clearColor :: proc(gl: GlHandle, r, g, b, a: f64) ---
 		gl_clear :: proc(gl: GlHandle, buffer_type: GlBufferType) ---
 		glp_compileShader :: proc(gl: GlHandle, shader_type: GlShaderType, source_ptr: [^]byte, source_count: int) -> GlHandle ---
 		glp_linkProgram :: proc(gl: GlHandle, shaders: ..GlHandle) -> GlHandle ---
 		gl_useProgram :: proc(gl: GlHandle, program: GlHandle) ---
+	}
+}
+glp_swapBuffers :: proc() {
+	when ODIN_ARCH == .wasm64p32 {
+		/* noop */
+	} else {
+		assert(false)
 	}
 }
 GlShaderType :: enum int {

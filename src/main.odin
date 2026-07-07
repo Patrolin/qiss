@@ -6,6 +6,8 @@ defaultContext: runtime.Context
 gl: GlHandle
 vertexShader :: #load("s_vertex.glsl", string)
 fragmentShader :: #load("s_fragment.glsl", string)
+window_width := 0
+window_height := 0
 
 Vertex :: struct {
 	position: [3]f32,
@@ -28,16 +30,24 @@ on_start :: proc "c" () {
 on_event :: proc "c" (type: WindowEventType, ns, x, y: int) {
 	context = defaultContext
 	if (type == .PointerMove) {return}
+	#partial switch type {
+	case .Resize:
+		window_width = x
+		window_height = y
+	}
 	printf("odin: %, %, %, %", f_int(type), f_int(ns), f_int(x), f_int(y))
 }
 @(export)
 on_tick :: proc "c" () -> (save_power: bool) {
 	context = defaultContext
+
+	gl_viewport(gl, 0, 0, window_width, window_height)
 	gl_clearColor(gl, 0, 0, 0, 1)
 	gl_clear(gl, .COLOR_BUFFER_BIT)
 
 	vertices := []Vertex{{{0, 0, 0}}, {{1, 0, 0}}, {{1, 1, 0}}, {{0, 1, 0}}}
 
+	glp_swapBuffers()
 	free_all(context.temp_allocator)
 	return true
 }
