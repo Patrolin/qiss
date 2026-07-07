@@ -46,7 +46,7 @@ function wasm_write(file, slice_ptr, slice_count) {
 
 // opengl
 function wasm_createWebGLContext() {
-  const gl = document.querySelector("canvas").getContext("webgl2");
+  const gl = document.querySelector("canvas").getContext("webgl2"/*, {antialias: false}*/);
   if (gl == null) throw new Error("Your browser does not support WebGL!");
   console.log(gl.getParameter(gl.VERSION));
   return BigInt(newHandle(gl));
