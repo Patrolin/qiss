@@ -48,3 +48,12 @@ FileHandle :: distinct int
 STDIN :: FileHandle(0)
 STDOUT :: FileHandle(1)
 STDERR :: FileHandle(2)
+
+// window
+WindowEventType :: enum int {
+	Resize,
+	PointerMove,
+	PointerDown,
+	PointerUp,
+	PointerCancel,
+}

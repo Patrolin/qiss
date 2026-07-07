@@ -12,13 +12,6 @@ on_start :: proc "c" () {
 	g_default_context = context
 	g_gl = wasm_createWebGLContext()
 }
-WindowEventType :: enum int {
-	Resize,
-	PointerMove,
-	PointerDown,
-	PointerUp,
-	PointerCancel,
-}
 @(export)
 on_event :: proc "c" (type: WindowEventType, ns, x, y: int) {
 	context = g_default_context
