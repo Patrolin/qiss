@@ -2,6 +2,8 @@
 const wasm_file = fetch("/dist/opengl.wasm", {mode: "no-cors"});
 /** @type {WebAssembly.Instance} */
 let wasm_instance;
+/** @type {WebGL2RenderingContext} */
+let gl;
 
 // builtins
 /**
@@ -24,20 +26,14 @@ function string(slice_data, slice_count) {
 }
 /**
  * @param {BigInt} slice_ptr
- * @return {BigInt[]} */
-function sliceOfInt(slice_ptr) {
+ * @return {[number, number]} */
+function slice(slice_ptr) {
   /** @type {WebAssembly.Memory} */
   const memory = wasm_instance.exports.memory;
   const slice = new BigUint64Array(memory.buffer, Number(slice_ptr), 2);
-  const slice_data = Number(slice[0]);
-  const slice_count = Number(slice[1]);
-
-  const data_bigints = new BigUint64Array(memory.buffer, Number(slice_data), slice_count);
-  //const data = new Array(data_bigints.length);
-  //for (let i = 0; i < data_bigints.length; i++) {
-  //  data[i] = Number(data_bigints[i]);
-  //}
-  return data_bigints;
+  const ptr = Number(slice[0]);
+  const count = Number(slice[1]);
+  return [ptr, count];
 }
 
 // files
@@ -96,74 +92,76 @@ const POINTER_MOVE_EVENT = 1;
 const POINTER_DOWN_EVENT = 2;
 const POINTER_UP_EVENT = 3;
 const POINTER_CANCEL_EVENT = 4;
-function handleEvent(...args) {
+function sendEvent(...args) {
   wasm_instance.exports.on_event(...args.map(BigInt));
   savePower_resolve();
 }
 function onResize() {
   const ns = Math.round(performance.now() * 1e6);
   const {clientWidth, clientHeight} = document.body;
-  handleEvent(RESIZE_EVENT, ns, clientWidth, clientHeight);
+  sendEvent(RESIZE_EVENT, ns, clientWidth, clientHeight);
 }
 window.addEventListener("resize", onResize);
 window.addEventListener("pointermove", (event) => {
   const ns = Math.round(performance.now() * 1e6);
   const {clientX, clientY} = event;
-  handleEvent(POINTER_MOVE_EVENT, ns, clientX, clientY);
+  sendEvent(POINTER_MOVE_EVENT, ns, clientX, clientY);
 });
 window.addEventListener("pointerdown", (event) => {
   const ns = Math.round(performance.now() * 1e6);
   const {clientX, clientY} = event;
-  handleEvent(POINTER_DOWN_EVENT, ns, clientX, clientY);
+  sendEvent(POINTER_DOWN_EVENT, ns, clientX, clientY);
 });
 window.addEventListener("pointerup", (event) => {
   const ns = Math.round(performance.now() * 1e6);
   const {clientX, clientY} = event;
-  handleEvent(POINTER_UP_EVENT, ns, clientX, clientY);
+  sendEvent(POINTER_UP_EVENT, ns, clientX, clientY);
 });
 window.addEventListener("pointercancel", (event) => {
   const ns = Math.round(performance.now() * 1e6);
   const {clientX, clientY} = event;
-  handleEvent(POINTER_CANCEL_EVENT, ns, clientX, clientY);
+  sendEvent(POINTER_CANCEL_EVENT, ns, clientX, clientY);
 });
 
 // opengl
 /** @return {BigInt} */
-function glp_createWebGLContext() {
-  const gl = document.querySelector("canvas").getContext("webgl2", {antialias: false});
+function glp_newContext() {
+  gl = document.querySelector("canvas").getContext("webgl2", {antialias: false});
   if (gl == null) throw new Error("Your browser does not support WebGL!");
   console.log(gl.getParameter(gl.VERSION));
   return BigInt(newHandle(gl));
 }
 /**
- * @param {number} gl_handle
- * @param {number} shader_type
- * @param {number} slice_data
- * @param {number} slice_count
+ * @param {BigInt} gl_handle
  * @return {BigInt} */
-function glp_compileShader(gl_handle, shader_type, slice_data, slice_count) {
-  /** @type {WebGL2RenderingContext} */
-  const gl = handles.get(Number(gl_handle));
-  const shader = gl.createShader(Number(shader_type));
-  assert(shader != null, "shader != null");
-  const shaderSource = string(slice_data, slice_count);
-  gl.shaderSource(shader, shaderSource);
-  gl.compileShader(shader);
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    console.log(shaderSource);
-    throw new Error(gl.getShaderInfoLog(shader));
-  }
-  return BigInt(newHandle(shader));
+function glp_setContext(gl_handle) {
+  gl = handles.get(Number(gl_handle));
 }
-function glp_linkProgram(glHandle, shaders_handles_ptr) {
-  /** @type {WebGL2RenderingContext} */
-  const gl = handles.get(Number(glHandle));
+/**
+ * @param {BigInt} shaders_slice_ptr
+ * @return {BigInt} */
+function glp_compileProgram(shaders_slice_ptr) {
   const program = gl.createProgram();
-  for (const shader_handle of sliceOfInt(shaders_handles_ptr)) {
-    const shader = handles.get(Number(shader_handle));
+  // compile shaders
+  /** @type {WebAssembly.Memory} */
+  const memory = wasm_instance.exports.memory;
+  const [ptr, count] = slice(shaders_slice_ptr)
+  const data = new BigUint64Array(memory.buffer, ptr, count*3);
+  for (let i = 0; i < count; i++) {
+    const shaderType = data[i*3];
+    const shaderSource = string(data[i*3 + 1], data[i*3 + 2]);
+    const shader = gl.createShader(Number(shaderType));
+    assert(shader != null, "shader != null");
+    gl.shaderSource(shader, shaderSource);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      console.log(shaderSource);
+      throw new Error(gl.getShaderInfoLog(shader));
+    }
     gl.attachShader(program, shader);
     gl.deleteShader(shader);
   }
+  // link program
   gl.linkProgram(program);
   gl.validateProgram(program);
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
@@ -172,8 +170,8 @@ function glp_linkProgram(glHandle, shaders_handles_ptr) {
   }
   return BigInt(newHandle(program));
 }
-function gl_useProgram(gl_handle, program_handle) {
-  const gl = handles.get(Number(gl_handle));
+/** @param {BigInt} program_handle */
+function gl_useProgram(program_handle) {
   const program = handles.get(Number(program_handle));
   gl.useProgram(program);
 }
@@ -181,8 +179,7 @@ const simpleGlProcs = Object.fromEntries([
   "viewport",
   "clearColor",
   "clear",
-].map(key => [`gl_${key}`, (gl_handle, ...args) => {
-  const gl = handles.get(Number(gl_handle));
+].map(key => [`gl_${key}`, (...args) => {
   gl[key](...args.map(v => (typeof v === "bigint" ? Number(v) : v)));
 }]));
 
@@ -191,9 +188,9 @@ const WASM_IMPORTS = {
   env: {
     wasm_printInt: console.log,
     wasm_write,
-    glp_createWebGLContext,
-    glp_compileShader,
-    glp_linkProgram,
+    glp_newContext,
+    glp_setContext,
+    glp_compileProgram,
     gl_useProgram,
     ...simpleGlProcs,
   },

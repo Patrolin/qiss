@@ -54,16 +54,21 @@ WindowEventType :: enum int {
 
 // opengl
 GlHandle :: distinct FileHandle
+GlProgram :: distinct GlHandle
+GlShader :: struct {
+	type: GlShaderType,
+	str:  string,
+}
 when ODIN_ARCH == .wasm64p32 {
 	@(default_calling_convention = "c")
 	foreign env {
-		glp_createWebGLContext :: proc() -> GlHandle ---
-		gl_viewport :: proc(gl: GlHandle, x, y, width, height: int) ---
-		gl_clearColor :: proc(gl: GlHandle, r, g, b, a: f64) ---
-		gl_clear :: proc(gl: GlHandle, buffer_type: GlBufferType) ---
-		glp_compileShader :: proc(gl: GlHandle, shader_type: GlShaderType, source_ptr: [^]byte, source_count: int) -> GlHandle ---
-		glp_linkProgram :: proc(gl: GlHandle, shaders: ..GlHandle) -> GlHandle ---
-		gl_useProgram :: proc(gl: GlHandle, program: GlHandle) ---
+		glp_newContext :: proc() -> GlHandle ---
+		glp_setContext :: proc(gl: GlHandle) ---
+		glp_compileProgram :: proc(shaders: ..GlShader) -> GlProgram ---
+		gl_viewport :: proc(x, y, width, height: int) ---
+		gl_clearColor :: proc(r, g, b, a: f64) ---
+		gl_clear :: proc(buffer_type: GlBufferType) ---
+		gl_useProgram :: proc(program: GlProgram) ---
 	}
 }
 glp_swapBuffers :: proc() {
