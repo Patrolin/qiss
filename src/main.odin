@@ -2,8 +2,8 @@ package main
 import "base:runtime"
 
 // files
-vertexShader :: #load("s_vertex.glsl", string)
-fragmentShader :: #load("s_fragment.glsl", string)
+vertex_shader :: #load("s_vertex.glsl", string)
+fragment_shader :: #load("s_fragment.glsl", string)
 
 // globals
 defaultContext: runtime.Context
@@ -23,7 +23,7 @@ on_start :: proc "c" () {
 	//context.allocator = bump_allocator()
 	defaultContext = context
 	glp_setContext(glp_newContext())
-	program = glp_compileProgram({.VERTEX_SHADER, vertexShader}, {.FRAGMENT_SHADER, fragmentShader})
+	program = glp_compileProgram({.VERTEX_SHADER, vertex_shader}, {.FRAGMENT_SHADER, fragment_shader})
 }
 @(export)
 on_event :: proc "c" (type: WindowEventType, ns, x, y: int) {
