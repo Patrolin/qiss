@@ -22,8 +22,8 @@ on_start :: proc "c" () {
 	context.temp_allocator = arena_allocator(1024 * 1024)
 	//context.allocator = bump_allocator()
 	defaultContext = context
-	glp_setContext(glp_newContext())
-	program = glp_compileProgram({.VERTEX_SHADER, vertex_shader}, {.FRAGMENT_SHADER, fragment_shader})
+	glpSetContext(glpNewContext())
+	program = glpCompileProgram({.VERTEX_SHADER, vertex_shader}, {.FRAGMENT_SHADER, fragment_shader})
 }
 @(export)
 on_event :: proc "c" (type: WindowEventType, ns, x, y: int) {
@@ -40,15 +40,14 @@ on_event :: proc "c" (type: WindowEventType, ns, x, y: int) {
 @(export)
 on_tick :: proc "c" () -> (save_power: bool) {
 	context = defaultContext
-	// clear buffers
-	gl_viewport(0, 0, window_width, window_height)
-	gl_clearColor(0, 0, 0, 1)
-	gl_clear(.COLOR_BUFFER_BIT)
-	// render
-	gl_useProgram(program)
+	glViewport(0, 0, window_width, window_height)
+	glClearColor(0, 0, 0, 1)
+	glClear(.COLOR_BUFFER_BIT)
+
+	glUseProgram(program)
 	vertices := []Vertex{{{0, 0, 0}}, {{1, 0, 0}}, {{1, 1, 0}}, {{0, 1, 0}}}
-	// swap buffers (if applicable)
-	glp_swapBuffers()
+
+	glpSwapBuffers()
 	free_all(context.temp_allocator)
 	return true
 }

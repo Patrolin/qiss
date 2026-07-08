@@ -62,16 +62,16 @@ GlShader :: struct {
 when ODIN_ARCH == .wasm64p32 {
 	@(default_calling_convention = "c")
 	foreign env {
-		glp_newContext :: proc() -> GlHandle ---
-		glp_setContext :: proc(gl: GlHandle) ---
-		glp_compileProgram :: proc(shaders: ..GlShader) -> GlProgram ---
-		gl_viewport :: proc(x, y, width, height: int) ---
-		gl_clearColor :: proc(r, g, b, a: f64) ---
-		gl_clear :: proc(buffer_type: GlBufferType) ---
-		gl_useProgram :: proc(program: GlProgram) ---
+		glpNewContext :: proc() -> GlHandle ---
+		glpSetContext :: proc(gl: GlHandle) ---
+		glpCompileProgram :: proc(shaders: ..GlShader) -> GlProgram ---
+		glViewport :: proc(x, y, width, height: int) ---
+		glClearColor :: proc(r, g, b, a: f64) ---
+		glClear :: proc(buffer_type: GlBufferType) ---
+		glUseProgram :: proc(program: GlProgram) ---
 	}
 }
-glp_swapBuffers :: proc() {
+glpSwapBuffers :: proc() {
 	when ODIN_ARCH == .wasm64p32 {
 		/* noop */
 	} else {

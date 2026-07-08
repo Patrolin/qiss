@@ -125,7 +125,7 @@ window.addEventListener("pointercancel", (event) => {
 
 // opengl
 /** @return {BigInt} */
-function glp_newContext() {
+function glpNewContext() {
   gl = document.querySelector("canvas").getContext("webgl2", {antialias: false});
   if (gl == null) throw new Error("Your browser does not support WebGL!");
   console.log(gl.getParameter(gl.VERSION));
@@ -134,13 +134,13 @@ function glp_newContext() {
 /**
  * @param {BigInt} gl_handle
  * @return {BigInt} */
-function glp_setContext(gl_handle) {
+function glpSetContext(gl_handle) {
   gl = handles.get(Number(gl_handle));
 }
 /**
  * @param {BigInt} shaders_slice_ptr
  * @return {BigInt} */
-function glp_compileProgram(shaders_slice_ptr) {
+function glpCompileProgram(shaders_slice_ptr) {
   const program = gl.createProgram();
   // compile shaders
   /** @type {WebAssembly.Memory} */
@@ -171,7 +171,7 @@ function glp_compileProgram(shaders_slice_ptr) {
   return BigInt(newHandle(program));
 }
 /** @param {BigInt} program_handle */
-function gl_useProgram(program_handle) {
+function glUseProgram(program_handle) {
   const program = handles.get(Number(program_handle));
   gl.useProgram(program);
 }
@@ -179,7 +179,7 @@ const simpleGlProcs = Object.fromEntries([
   "viewport",
   "clearColor",
   "clear",
-].map(key => [`gl_${key}`, (...args) => {
+].map(key => [`gl${key[0].toUpperCase() + key.slice(1)}`, (...args) => {
   gl[key](...args.map(v => (typeof v === "bigint" ? Number(v) : v)));
 }]));
 
@@ -188,10 +188,10 @@ const WASM_IMPORTS = {
   env: {
     wasm_printInt: console.log,
     wasm_write,
-    glp_newContext,
-    glp_setContext,
-    glp_compileProgram,
-    gl_useProgram,
+    glpNewContext,
+    glpSetContext,
+    glpCompileProgram,
+    glUseProgram,
     ...simpleGlProcs,
   },
 };
