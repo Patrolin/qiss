@@ -2,8 +2,8 @@
 const wasm_file = fetch("/dist/opengl.wasm", {mode: "no-cors"});
 /** @type {WebAssembly.Instance} */
 let wasm_instance;
-/** @type {WebGL2RenderingContext} */
-let gl;
+/** @type {HTMLCanvasElement} */
+let canvas;
 
 // builtins
 /**
@@ -97,8 +97,10 @@ function sendEvent(...args) {
   savePower_resolve();
 }
 function onResize() {
-  const ns = Math.round(performance.now() * 1e6);
   const {clientWidth, clientHeight} = document.body;
+  canvas.width = clientWidth;
+  canvas.height = clientHeight;
+  const ns = Math.round(performance.now() * 1e6);
   sendEvent(RESIZE_EVENT, ns, clientWidth, clientHeight);
 }
 window.addEventListener("resize", onResize);
@@ -124,11 +126,34 @@ window.addEventListener("pointercancel", (event) => {
 });
 
 // opengl
+/** @type {WebGL2RenderingContext} */
+let gl;
+/** @type {{vbo: WebGLBuffer, vao: WebGLVertexArrayObject}} */
+let glpDrawCover_data;
+
 /** @return {BigInt} */
 function glpNewContext() {
-  gl = document.querySelector("canvas").getContext("webgl2", {antialias: false});
+  // new context
+  gl = canvas.getContext("webgl2", {antialias: false});
   if (gl == null) throw new Error("Your browser does not support WebGL!");
   console.log(gl.getParameter(gl.VERSION));
+  // setup glpCoverStep
+  const vao = gl.createVertexArray();
+  const vbo = gl.createBuffer();
+  gl.bindVertexArray(vao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+
+  const vertices = new Float32Array([-1, -1, 3, -1, -1, 3]);
+  gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+  const location = 0;
+  const positionCount = 2;
+  const vertexSize = positionCount*4;
+  gl.vertexAttribPointer(location, positionCount, gl.FLOAT, false, vertexSize, 0);
+  gl.enableVertexAttribArray(location);
+
+  glpDrawCover_data = {vao, vbo};
+  gl.bindVertexArray(null);
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
   return BigInt(newHandle(gl));
 }
 /**
@@ -170,13 +195,50 @@ function glpCompileProgram(shaders_slice_ptr) {
   }
   return BigInt(newHandle(program));
 }
+/** @type {{vao: WebGLVertexArrayObject, vbo: WebGLBuffer, ebo: WebGLBuffer}[]} */
+const glpSteps = [];
+let glpStepIndex = 0;
+const GLP_PRESENT = 0x1;
+/**
+ * @param {BigInt} width
+ * @param {BigInt} height
+ * @param {boolean} present */
+function glpStep(width, height, present) {
+  // TODO: handle `present`
+  gl.bindVertexArray(null);
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+
+  if (glpStepIndex >= glpSteps.length) {
+    const vao = gl.createVertexArray();
+    const vbo = gl.createBuffer();
+    const ebo = gl.createBuffer();
+    glpSteps.push({vao, vbo, ebo});
+  }
+  const step = glpSteps[glpStepIndex];
+	gl.viewport(0, 0, Number(width), Number(height));
+  gl.bindVertexArray(step.vao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, step.vbo);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, step.ebo);
+  glpStepIndex++;
+}
+function glpDrawCover() {
+  gl.bindVertexArray(glpDrawCover_data.vao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, glpDrawCover_data.vbo);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  gl.bindVertexArray(null);
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
+}
+function glpSwapBuffers() {
+  glpStepIndex = 0;
+}
 /** @param {BigInt} program_handle */
 function glUseProgram(program_handle) {
   const program = handles.get(Number(program_handle));
   gl.useProgram(program);
 }
 const simpleGlProcs = Object.fromEntries([
-  "viewport",
   "clearColor",
   "clear",
 ].map(key => [`gl${key[0].toUpperCase() + key.slice(1)}`, (...args) => {
@@ -191,13 +253,17 @@ const WASM_IMPORTS = {
     glpNewContext,
     glpSetContext,
     glpCompileProgram,
+    glpStep,
+    glpDrawCover,
+    glpSwapBuffers,
     glUseProgram,
     ...simpleGlProcs,
   },
 };
 const utf8_decoder = new TextDecoder();
 const wasm_promise = WebAssembly.instantiateStreaming(wasm_file, WASM_IMPORTS);
-(async () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  canvas = document.querySelector("canvas");
   wasm_instance = (await wasm_promise).instance;
   console.log(wasm_instance);
   wasm_instance.exports.on_start();
@@ -206,4 +272,4 @@ const wasm_promise = WebAssembly.instantiateStreaming(wasm_file, WASM_IMPORTS);
     const savePower = wasm_instance.exports.on_tick();
     await waitForNextFrame(savePower);
   }
-})();
+});

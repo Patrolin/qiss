@@ -59,23 +59,24 @@ GlShader :: struct {
 	type: GlShaderType,
 	str:  string,
 }
+GlpStep :: struct {
+	vao: GlHandle,
+	vbo: GlHandle,
+	ebo: GlHandle,
+}
 when ODIN_ARCH == .wasm64p32 {
 	@(default_calling_convention = "c")
 	foreign env {
 		glpNewContext :: proc() -> GlHandle ---
 		glpSetContext :: proc(gl: GlHandle) ---
 		glpCompileProgram :: proc(shaders: ..GlShader) -> GlProgram ---
+		glpStep :: proc(width, height: int, present := false) ---
+		glpDrawCover :: proc() ---
+		glpSwapBuffers :: proc() ---
 		glViewport :: proc(x, y, width, height: int) ---
 		glClearColor :: proc(r, g, b, a: f64) ---
 		glClear :: proc(buffer_type: GlBufferType) ---
 		glUseProgram :: proc(program: GlProgram) ---
-	}
-}
-glpSwapBuffers :: proc() {
-	when ODIN_ARCH == .wasm64p32 {
-		/* noop */
-	} else {
-		assert(false)
 	}
 }
 GlShaderType :: enum int {

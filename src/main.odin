@@ -40,12 +40,13 @@ on_event :: proc "c" (type: WindowEventType, ns, x, y: int) {
 @(export)
 on_tick :: proc "c" () -> (save_power: bool) {
 	context = defaultContext
-	glViewport(0, 0, window_width, window_height)
+	glpStep(window_width, window_height, true)
 	glClearColor(0, 0, 0, 1)
 	glClear(.COLOR_BUFFER_BIT)
 
 	glUseProgram(program)
-	vertices := []Vertex{{{0, 0, 0}}, {{1, 0, 0}}, {{1, 1, 0}}, {{0, 1, 0}}}
+	glpDrawCover()
+	//vertices := []Vertex{{{0, 0, 0}}, {{1, 0, 0}}, {{1, 1, 0}}, {{0, 1, 0}}}
 
 	glpSwapBuffers()
 	free_all(context.temp_allocator)
