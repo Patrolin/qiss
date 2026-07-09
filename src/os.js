@@ -1,7 +1,9 @@
 // fetch the wasm file
 const wasm_file = fetch("/dist/opengl.wasm", {mode: "no-cors"});
 /** @type {WebAssembly.Instance} */
-let wasm_instance;
+let instance;
+/** @type {WebAssembly.Memory} */
+let memory;
 /** @type {HTMLCanvasElement} */
 let canvas;
 
@@ -15,25 +17,26 @@ function assert(condition, message) {
 /**
  * @param {BigInt} slice_data
  * @param {BigInt} slice_count
+ * @return {Uint8Array} */
+function slice_of_byte(slice_data, slice_count) {
+  return new Uint8Array(memory.buffer, Number(slice_data), Number(slice_count));
+}
+/**
+ * @param {BigInt} str_data
+ * @param {BigInt} str_count
  * @return {string} */
-function string(slice_data, slice_count) {
-  /** @type {WebAssembly.Memory} */
-  const memory = wasm_instance.exports.memory;
-  const slice = new Uint8Array(memory.buffer, Number(slice_data), Number(slice_count));
-  //const bytes = new Uint8Array(slice);
-  //console.log({slice, bytes})
+function string(str_data, str_count) {
+  const slice = slice_of_byte(str_data, str_count)
   return utf8_decoder.decode(slice);
 }
 /**
  * @param {BigInt} slice_ptr
  * @return {[number, number]} */
-function slice(slice_ptr) {
-  /** @type {WebAssembly.Memory} */
-  const memory = wasm_instance.exports.memory;
+function load_slice(slice_ptr) {
   const slice = new BigUint64Array(memory.buffer, Number(slice_ptr), 2);
-  const ptr = Number(slice[0]);
+  const data = Number(slice[0]);
   const count = Number(slice[1]);
-  return [ptr, count];
+  return [data, count];
 }
 
 // files
@@ -93,7 +96,7 @@ const POINTER_DOWN_EVENT = 2;
 const POINTER_UP_EVENT = 3;
 const POINTER_CANCEL_EVENT = 4;
 function sendEvent(...args) {
-  wasm_instance.exports.on_event(...args.map(BigInt));
+  instance.exports.on_event(...args.map(BigInt));
   savePower_resolve();
 }
 function onResize() {
@@ -168,9 +171,7 @@ function glpSetContext(gl_handle) {
 function glpCompileProgram(shaders_slice_ptr) {
   const program = gl.createProgram();
   // compile shaders
-  /** @type {WebAssembly.Memory} */
-  const memory = wasm_instance.exports.memory;
-  const [ptr, count] = slice(shaders_slice_ptr)
+  const [ptr, count] = load_slice(shaders_slice_ptr)
   const data = new BigUint64Array(memory.buffer, ptr, count*3);
   for (let i = 0; i < count; i++) {
     const shaderType = data[i*3];
@@ -239,9 +240,7 @@ function glUseProgram(program_handle) {
   gl.useProgram(program);
 }
 function glBufferData(type, buffer_data, buffer_size, usage) {
-  /** @type {WebAssembly.Memory} */
-  const memory = wasm_instance.exports.memory;
-  const buffer = new Uint8Array(memory.buffer, Number(buffer_data), Number(buffer_size));
+  const buffer = slice_of_byte(buffer_data, buffer_size);
   console.log(Number(type), buffer, Number(usage))
   gl.bufferData(Number(type), buffer, Number(usage));
 }
@@ -273,12 +272,13 @@ const utf8_decoder = new TextDecoder();
 const wasm_promise = WebAssembly.instantiateStreaming(wasm_file, WASM_IMPORTS);
 document.addEventListener("DOMContentLoaded", async () => {
   canvas = document.querySelector("canvas");
-  wasm_instance = (await wasm_promise).instance;
-  console.log(wasm_instance);
-  wasm_instance.exports.on_start();
+  instance = (await wasm_promise).instance;
+  memory = instance.exports.memory;
+  console.log(instance);
+  instance.exports.on_start();
   onResize();
   while (true) {
-    const savePower = wasm_instance.exports.on_tick();
+    const savePower = instance.exports.on_tick();
     await waitForNextFrame(savePower);
   }
 });
