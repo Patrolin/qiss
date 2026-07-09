@@ -55,14 +55,40 @@ WindowEventType :: enum int {
 // opengl
 GlHandle :: distinct FileHandle
 GlProgram :: distinct GlHandle
+GlShaderType :: enum int {
+	FRAGMENT_SHADER = 35632,
+	VERTEX_SHADER   = 35633,
+}
 GlShader :: struct {
 	type: GlShaderType,
 	str:  string,
 }
-GlpStep :: struct {
-	vao: GlHandle,
-	vbo: GlHandle,
-	ebo: GlHandle,
+GlBufferBit :: enum int {
+	COLOR_BUFFER_BIT = 0x4000,
+}
+GlBufferType :: enum int {
+	ARRAY_BUFFER         = 34962,
+	ELEMENT_ARRAY_BUFFER = 34963,
+}
+GlBufferUsage :: enum int {
+	STREAM_DRAW = 35040,
+	STREAM_READ,
+	STREAM_COPY,
+	STATIC_DRAW = 35044,
+	STATIC_READ,
+	STATIC_COPY,
+	DYNAMIC_DRAW = 35048,
+	DYNAMIC_READ,
+	DYNAMIC_COPY,
+}
+GlDrawMode :: enum int {
+	POINTS,
+	LINES,
+	LINE_LOOP,
+	LINE_STRIP,
+	TRIANGLES,
+	TRIANGLE_STRIP,
+	TRIANGLE_FAN,
 }
 when ODIN_ARCH == .wasm64p32 {
 	@(default_calling_convention = "c")
@@ -75,14 +101,10 @@ when ODIN_ARCH == .wasm64p32 {
 		glpSwapBuffers :: proc() ---
 		glViewport :: proc(x, y, width, height: int) ---
 		glClearColor :: proc(r, g, b, a: f64) ---
-		glClear :: proc(buffer_type: GlBufferType) ---
+		glClear :: proc(buffer_bit: GlBufferBit) ---
 		glUseProgram :: proc(program: GlProgram) ---
+		glBufferData :: proc(type: GlBufferType, buffer: rawptr, buffer_size: int, usage: GlBufferUsage) ---
+		glDrawArrays :: proc(mode: GlDrawMode, start: int, count: int) ---
 	}
 }
-GlShaderType :: enum int {
-	FRAGMENT_SHADER = 35632,
-	VERTEX_SHADER   = 35633,
-}
-GlBufferType :: enum int {
-	COLOR_BUFFER_BIT = 0x4000,
-}
+//GlpStep :: struct {texture: ...}

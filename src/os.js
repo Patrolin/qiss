@@ -238,9 +238,17 @@ function glUseProgram(program_handle) {
   const program = handles.get(Number(program_handle));
   gl.useProgram(program);
 }
+function glBufferData(type, buffer_data, buffer_size, usage) {
+  /** @type {WebAssembly.Memory} */
+  const memory = wasm_instance.exports.memory;
+  const buffer = new Uint8Array(memory.buffer, Number(buffer_data), Number(buffer_size));
+  console.log(Number(type), buffer, Number(usage))
+  gl.bufferData(Number(type), buffer, Number(usage));
+}
 const simpleGlProcs = Object.fromEntries([
   "clearColor",
   "clear",
+  "drawArrays",
 ].map(key => [`gl${key[0].toUpperCase() + key.slice(1)}`, (...args) => {
   gl[key](...args.map(v => (typeof v === "bigint" ? Number(v) : v)));
 }]));
@@ -257,6 +265,7 @@ const WASM_IMPORTS = {
     glpDrawCover,
     glpSwapBuffers,
     glUseProgram,
+    glBufferData,
     ...simpleGlProcs,
   },
 };
