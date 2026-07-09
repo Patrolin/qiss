@@ -47,7 +47,7 @@ on_tick :: proc "c" () -> (save_power: bool) {
 	glUseProgram(program)
 	//glpDrawCover()
 
-	vertices := []Vertex{{{-1, -1, 0}}, {{1, 0, 0}}, {{1, 1, 0}}}
+	vertices := []Vertex{{{-1, -1, 0}}, {{1, 0, 0}}, {{0, 1, 0}}}
 	//vertices := []Vertex{{{0, 0, 0}}, {{1, 0, 0}}, {{1, 1, 0}}, {{0, 1, 0}}}
 	glBufferData(.ARRAY_BUFFER, raw_data(vertices), len(vertices) * size_of(Vertex), .STREAM_DRAW)
 	location := 0
