@@ -140,6 +140,13 @@ function glpNewContext() {
   gl = canvas.getContext("webgl2", {antialias: false});
   if (gl == null) throw new Error("Your browser does not support WebGL!");
   console.log(gl.getParameter(gl.VERSION));
+  console.log({
+    BYTE: gl.BYTE,
+    SHORT: gl.SHORT,
+    UNSIGNED_BYTE: gl.UNSIGNED_BYTE,
+    UNSIGNED_SHORT: gl.UNSIGNED_SHORT,
+    FLOAT: gl.FLOAT,
+  })
   // setup glpCoverStep
   const vao = gl.createVertexArray();
   const vbo = gl.createBuffer();
@@ -164,6 +171,13 @@ function glpNewContext() {
  * @return {BigInt} */
 function glpSetContext(gl_handle) {
   gl = handles.get(Number(gl_handle));
+  console.log("a", {
+    HALF_FLOAT: gl.HALF_FLOAT,
+    INT: gl.INT,
+    UNSIGNED_INT: gl.UNSIGNED_INT,
+    INT_2_10_10_10_REV: gl.INT_2_10_10_10_REV,
+    UNSIGNED_INT_2_10_10_10_REV: gl.UNSIGNED_INT_2_10_10_10_REV,
+  });
 }
 /**
  * @param {BigInt} shaders_slice_ptr
@@ -241,15 +255,16 @@ function glUseProgram(program_handle) {
 }
 function glBufferData(type, buffer_data, buffer_size, usage) {
   const buffer = slice_of_byte(buffer_data, buffer_size);
-  console.log(Number(type), buffer, Number(usage))
   gl.bufferData(Number(type), buffer, Number(usage));
 }
 const simpleGlProcs = Object.fromEntries([
-  "clearColor",
-  "clear",
-  "drawArrays",
-].map(key => [`gl${key[0].toUpperCase() + key.slice(1)}`, (...args) => {
-  gl[key](...args.map(v => (typeof v === "bigint" ? Number(v) : v)));
+  "glClearColor",
+  "glClear",
+  "glDrawArrays",
+  "glVertexAttribPointer",
+  "glEnableVertexAttribArray",
+].map(key => [key, (...args) => {
+  gl[key[2].toLowerCase() + key.slice(3)](...args.map(v => (typeof v === "bigint" ? Number(v) : v)));
 }]));
 
 // run the wasm

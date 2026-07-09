@@ -37,7 +37,6 @@ on_event :: proc "c" (type: WindowEventType, ns, x, y: int) {
 	}
 	printf("odin: %, %, %, %", f_int(type), f_int(ns), f_int(x), f_int(y))
 }
-vertices :: []Vertex{{{-1, -1, 0}}, {{1, 0, 0}}, {{1, 1, 0}}}
 @(export)
 on_tick :: proc "c" () -> (save_power: bool) {
 	context = defaultContext
@@ -48,12 +47,13 @@ on_tick :: proc "c" () -> (save_power: bool) {
 	glUseProgram(program)
 	//glpDrawCover()
 
+	vertices := []Vertex{{{-1, -1, 0}}, {{1, 0, 0}}, {{1, 1, 0}}}
 	//vertices := []Vertex{{{0, 0, 0}}, {{1, 0, 0}}, {{1, 1, 0}}, {{0, 1, 0}}}
 	glBufferData(.ARRAY_BUFFER, raw_data(vertices), len(vertices) * size_of(Vertex), .STREAM_DRAW)
-	/* TODO:
-		gl.vertexAttribPointer(location, positionCount, gl.FLOAT, false, vertexSize, 0);
-  	gl.enableVertexAttribArray(location);
-	*/
+	location := 0
+	position_count := len(vertices[0].position)
+	glVertexAttribPointer(location, position_count, .FLOAT, false, size_of(Vertex), offset_of(Vertex, position))
+	glEnableVertexAttribArray(location)
 	glDrawArrays(.TRIANGLES, 0, len(vertices))
 
 	glpSwapBuffers()

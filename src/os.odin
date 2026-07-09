@@ -81,6 +81,18 @@ GlBufferUsage :: enum int {
 	DYNAMIC_READ,
 	DYNAMIC_COPY,
 }
+GlType :: enum int {
+	BYTE = 5120,
+	UNSIGNED_BYTE,
+	SHORT,
+	UNSIGNED_SHORT,
+	INT,
+	UNSIGNED_INT,
+	FLOAT,
+	HALF_FLOAT = 5131,
+	INT_2_10_10_10_REV = 36255,
+	UNSIGNED_INT_2_10_10_10_REV = 33640,
+}
 GlDrawMode :: enum int {
 	POINTS,
 	LINES,
@@ -104,6 +116,8 @@ when ODIN_ARCH == .wasm64p32 {
 		glClear :: proc(buffer_bit: GlBufferBit) ---
 		glUseProgram :: proc(program: GlProgram) ---
 		glBufferData :: proc(type: GlBufferType, buffer: rawptr, buffer_size: int, usage: GlBufferUsage) ---
+		glVertexAttribPointer :: proc(location: int, count: int, type: GlType, normalize: bool, vertex_size: int, #any_int offset: int) ---
+		glEnableVertexAttribArray :: proc(location: int) ---
 		glDrawArrays :: proc(mode: GlDrawMode, start: int, count: int) ---
 	}
 }
