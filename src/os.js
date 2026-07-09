@@ -140,13 +140,6 @@ function glpNewContext() {
   gl = canvas.getContext("webgl2", {antialias: false});
   if (gl == null) throw new Error("Your browser does not support WebGL!");
   console.log(gl.getParameter(gl.VERSION));
-  console.log({
-    BYTE: gl.BYTE,
-    SHORT: gl.SHORT,
-    UNSIGNED_BYTE: gl.UNSIGNED_BYTE,
-    UNSIGNED_SHORT: gl.UNSIGNED_SHORT,
-    FLOAT: gl.FLOAT,
-  })
   // setup glpCoverStep
   const vao = gl.createVertexArray();
   const vbo = gl.createBuffer();
@@ -171,13 +164,6 @@ function glpNewContext() {
  * @return {BigInt} */
 function glpSetContext(gl_handle) {
   gl = handles.get(Number(gl_handle));
-  console.log("a", {
-    HALF_FLOAT: gl.HALF_FLOAT,
-    INT: gl.INT,
-    UNSIGNED_INT: gl.UNSIGNED_INT,
-    INT_2_10_10_10_REV: gl.INT_2_10_10_10_REV,
-    UNSIGNED_INT_2_10_10_10_REV: gl.UNSIGNED_INT_2_10_10_10_REV,
-  });
 }
 /**
  * @param {BigInt} shaders_slice_ptr
