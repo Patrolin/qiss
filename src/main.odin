@@ -81,9 +81,6 @@ on_tick :: proc "c" () -> (save_power: bool) {
 		//glDrawArrays(.TRIANGLES, 0, len(vertices))
 		// do postprocessing
 		glpStep(window_width, window_height, true)
-		glClearColor(0, 0, 0, 1)
-		glClear({.COLOR_BUFFER_BIT})
-
 		glpUseShader(&postprocessShader)
 		glpDrawCover()
 	}

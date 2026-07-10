@@ -40,8 +40,9 @@ function load_slice(slice_ptr) {
 }
 
 // files
+const INVALID_HANDLE = -1;
 /** @type {Map<number, any>} */
-const handles = new Map([[-1, null]]);
+const handles = new Map([[INVALID_HANDLE, null]]);
 let next_handle = 0;
 /**
  * @param {any} value
@@ -131,7 +132,7 @@ window.addEventListener("pointercancel", (event) => {
 // opengl
 /** @type {WebGL2RenderingContext} */
 let gl;
-/** @type {{vbo: number, vao: number}} */
+/** @type {{vao: number, vbo: number}} */
 let glpCover_handles;
 
 /** @return {BigInt} */
@@ -140,13 +141,14 @@ function glpNewContext() {
   gl = canvas.getContext("webgl2", {antialias: false});
   if (gl == null) throw new Error("Your browser does not support WebGL!");
   console.log(gl.getParameter(gl.VERSION));
-  // setup glpCover_handles
-  const vao = gl.createVertexArray();
+  // setup glpCover vbo
   const vbo = gl.createBuffer();
-  gl.bindVertexArray(vao);
   gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
   const vertices = new Float32Array([-1, -1, 3, -1, -1, 3]);
   gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+  // setup glpCover vao
+  const vao = gl.createVertexArray();
+  gl.bindVertexArray(vao);
   const location = 0;
   const positionCount = 2;
   const vertexSize = positionCount*4;
@@ -156,7 +158,6 @@ function glpNewContext() {
     vao: newHandle(vao),
     vbo: newHandle(vbo),
   };
-
   gl.bindVertexArray(null);
   gl.bindBuffer(gl.ARRAY_BUFFER, null);
   return BigInt(newHandle(gl));
@@ -183,7 +184,7 @@ function glpCompileShader(shader_ptr) {
   if (flags & GLP_COVER) {
     data[1] = BigInt(glpCover_handles.vao);
     data[2] = BigInt(glpCover_handles.vbo);
-    data[3] = BigInt(-1);
+    data[3] = BigInt(INVALID_HANDLE);
   } else {
     const vao = gl.createVertexArray();
     const vbo = gl.createBuffer();
@@ -217,7 +218,7 @@ function glpCompileShader(shader_ptr) {
   }
   return programHandle;
 }
-/** @type {{fbo: WebGLBuffer, width: number, height: number}[]} */
+/** @type {{texture: WebGLTexture, fbo: WebGLBuffer, width: number, height: number}[]} */
 const glpSteps = [];
 let glpStepIndex = -1;
 /**
@@ -233,23 +234,26 @@ function glpStep(width, height, present) {
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
   // create a new framebuffer
   if (++glpStepIndex >= glpSteps.length) {
+    /** @type {WebGLTexture|null} */
+    let texture = null;
     /** @type {WebGLFramebuffer|null} */
     let fbo = null;
     if (!present) {
       // create the framebuffer texture
       const texture = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, texture);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, width, height, 0, gl.RGB, gl.UNSIGNED_BYTE, null);
       //gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, width, height, 0, gl.RGBA, gl.FLOAT, null);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       gl.bindTexture(gl.TEXTURE_2D, null);
       // create the framebuffer
       fbo = gl.createFramebuffer();
-      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, fbo);
-      gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
       const fboStatus = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
       if (fboStatus != gl.FRAMEBUFFER_COMPLETE) {
         const fboStatus_to_errorMessage = {
@@ -261,13 +265,15 @@ function glpStep(width, height, present) {
         }
         throw new Error(`Failed to initialize FBO: ${fboStatus_to_errorMessage[fboStatus]}`);
       }
-      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
-    glpSteps.push({fbo, width, height});
+    glpSteps.push({texture, fbo, width, height});
   }
   const step = glpSteps[glpStepIndex];
-  if (!present) {
-    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, step.fbo);
+  if (present) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  } else {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, step.fbo);
   }
 	gl.viewport(0, 0, width, height);
   step.width = width;
@@ -295,6 +301,10 @@ function glpUseShader(shader_ptr) {
 function glpDrawCover() {
   if (glpStepIndex > 0 && false) {
     const prevStep = glpSteps[glpStepIndex-1];
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, prevStep.texture);
+    const prev_location = gl.getUniformLocation(activeProgram, "prev");
+    gl.uniform1i(prev_location, 0);
     const prevResolution_location = gl.getUniformLocation(activeProgram, "prev_resolution");
     gl.uniform2f(prevResolution_location, prevStep.width, prevStep.height);
   }
@@ -302,6 +312,7 @@ function glpDrawCover() {
   const resolution_location = gl.getUniformLocation(activeProgram, "resolution");
   gl.uniform2f(resolution_location, step.width, step.height);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
+  // TODO: why does the framebuffer texture not work??
 }
 function glpSwapBuffers() {
   glpStepIndex = -1;
