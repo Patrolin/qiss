@@ -166,16 +166,20 @@ function glpSetContext(gl_handle) {
   gl = handles.get(Number(gl_handle));
 }
 /**
- * @param {BigInt} shaders_slice_ptr
+ * @param {BigInt} shader_ptr
  * @return {BigInt} */
-function glpCompileProgram(shaders_slice_ptr) {
+function glpCompileShader(shader_ptr) {
+  const data = new BigUint64Array(memory.buffer, shader_ptr, 5);
+  // create program
   const program = gl.createProgram();
+  const programHandle = BigInt(newHandle(program))
+  data[0] = BigInt(programHandle);
   // compile shaders
-  const [ptr, count] = load_slice(shaders_slice_ptr)
-  const data = new BigUint64Array(memory.buffer, ptr, count*3);
-  for (let i = 0; i < count; i++) {
-    const shaderType = data[i*3];
-    const shaderSource = string(data[i*3 + 1], data[i*3 + 2]);
+  const shaderTypes = [gl.VERTEX_SHADER, gl.FRAGMENT_SHADER];
+  for (let i = 0; i < shaderTypes.length; i++) {
+    const shaderType = shaderTypes[i];
+    const shaderSource = string(data[i*2 + 1], data[i*2 + 2])
+    if (!shaderSource) continue;
     const shader = gl.createShader(Number(shaderType));
     assert(shader != null, "shader != null");
     gl.shaderSource(shader, shaderSource);
@@ -194,12 +198,18 @@ function glpCompileProgram(shaders_slice_ptr) {
     const info = gl.getProgramInfoLog(program);
     throw new Error(info);
   }
-  return BigInt(newHandle(program));
+  return programHandle;
 }
 /** @type {{vao: WebGLVertexArrayObject, vbo: WebGLBuffer, ebo: WebGLBuffer}[]} */
 const glpSteps = [];
 let glpStepIndex = 0;
 const GLP_PRESENT = 0x1;
+/** @type {number} */
+let step_width;
+/** @type {number} */
+let step_height;
+/** @type {number} */
+let activeProgram;
 /**
  * @param {BigInt} width
  * @param {BigInt} height
@@ -218,6 +228,8 @@ function glpStep(width, height, present) {
   }
   const step = glpSteps[glpStepIndex];
 	gl.viewport(0, 0, Number(width), Number(height));
+  step_width = Number(width);
+  step_height = Number(height);
   gl.bindVertexArray(step.vao);
   gl.bindBuffer(gl.ARRAY_BUFFER, step.vbo);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, step.ebo);
@@ -226,6 +238,8 @@ function glpStep(width, height, present) {
 function glpDrawCover() {
   gl.bindVertexArray(glpDrawCover_data.vao);
   gl.bindBuffer(gl.ARRAY_BUFFER, glpDrawCover_data.vbo);
+  const resolution_location = gl.getUniformLocation(activeProgram, "resolution");
+  gl.uniform2f(resolution_location, step_width, step_height);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 
   gl.bindVertexArray(null);
@@ -234,10 +248,12 @@ function glpDrawCover() {
 function glpSwapBuffers() {
   glpStepIndex = 0;
 }
-/** @param {BigInt} program_handle */
-function glUseProgram(program_handle) {
-  const program = handles.get(Number(program_handle));
+/** @param {BigInt} shader_ptr */
+function glpUseShader(shader_ptr) {
+  const data = new BigUint64Array(memory.buffer, shader_ptr, 1);
+  const program = handles.get(Number(data[0]));
   gl.useProgram(program);
+  activeProgram = program;
 }
 function glBufferData(type, buffer_data, buffer_size, usage) {
   const buffer = slice_of_byte(buffer_data, buffer_size);
@@ -260,11 +276,11 @@ const WASM_IMPORTS = {
     wasm_write,
     glpNewContext,
     glpSetContext,
-    glpCompileProgram,
+    glpCompileShader,
     glpStep,
+    glpUseShader,
     glpDrawCover,
     glpSwapBuffers,
-    glUseProgram,
     glBufferData,
     ...simpleGlProcs,
   },

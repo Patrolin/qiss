@@ -60,12 +60,13 @@ GlShaderType :: enum int {
 	VERTEX_SHADER   = 35633,
 }
 GlShader :: struct {
-	type: GlShaderType,
-	str:  string,
+	program:  GlProgram,
+	vertex:   string,
+	fragment: string,
 }
-GlBufferBit :: enum int {
-	COLOR_BUFFER_BIT = 0x4000,
-}
+GlBufferBits :: bit_set[enum int {
+	COLOR_BUFFER_BIT = 14,
+};int]
 GlBufferType :: enum int {
 	ARRAY_BUFFER         = 34962,
 	ELEMENT_ARRAY_BUFFER = 34963,
@@ -107,14 +108,14 @@ when ODIN_ARCH == .wasm64p32 {
 	foreign env {
 		glpNewContext :: proc() -> GlHandle ---
 		glpSetContext :: proc(gl: GlHandle) ---
-		glpCompileProgram :: proc(shaders: ..GlShader) -> GlProgram ---
+		glpCompileShader :: proc(shader: ^GlShader) ---
 		glpStep :: proc(width, height: int, present := false) ---
+		glpUseShader :: proc(shader: ^GlShader) ---
 		glpDrawCover :: proc() ---
 		glpSwapBuffers :: proc() ---
 		glViewport :: proc(x, y, width, height: int) ---
 		glClearColor :: proc(r, g, b, a: f64) ---
-		glClear :: proc(buffer_bit: GlBufferBit) ---
-		glUseProgram :: proc(program: GlProgram) ---
+		glClear :: proc(buffer_types: GlBufferBits) ---
 		glBufferData :: proc(type: GlBufferType, buffer: rawptr, buffer_size: int, usage: GlBufferUsage) ---
 		glVertexAttribPointer :: proc(location: int, count: int, type: GlType, normalize: bool, vertex_size: int, #any_int offset: int) ---
 		glEnableVertexAttribArray :: proc(location: int) ---

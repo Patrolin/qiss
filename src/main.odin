@@ -2,12 +2,17 @@ package main
 import "base:runtime"
 
 // files
-vertex_shader :: #load("s_vertex.glsl", string)
-fragment_shader :: #load("s_fragment.glsl", string)
+drawShader := GlShader {
+	vertex   = #load("shaders/draw.vert", string),
+	fragment = #load("shaders/draw.frag", string),
+}
+postprocessShader := GlShader {
+	vertex   = #load("shaders/cover.vert", string),
+	fragment = #load("shaders/postprocess.frag", string),
+}
 
 // globals
 defaultContext: runtime.Context
-program: GlProgram
 window_width := 0
 window_height := 0
 
@@ -23,7 +28,8 @@ on_start :: proc "c" () {
 	//context.allocator = bump_allocator()
 	defaultContext = context
 	glpSetContext(glpNewContext())
-	program = glpCompileProgram({.VERTEX_SHADER, vertex_shader}, {.FRAGMENT_SHADER, fragment_shader})
+	glpCompileShader(&drawShader)
+	glpCompileShader(&postprocessShader)
 }
 @(export)
 on_event :: proc "c" (type: WindowEventType, ns, x, y: int) {
@@ -40,13 +46,12 @@ on_event :: proc "c" (type: WindowEventType, ns, x, y: int) {
 @(export)
 on_tick :: proc "c" () -> (save_power: bool) {
 	context = defaultContext
+	//glpStep(window_width, window_height)
 	glpStep(window_width, window_height, true)
 	glClearColor(0, 0, 0, 1)
-	glClear(.COLOR_BUFFER_BIT)
+	glClear({.COLOR_BUFFER_BIT})
 
-	glUseProgram(program)
-	//glpDrawCover()
-
+	glpUseShader(&drawShader)
 	vertices := []Vertex{{{-1, -1, 0}}, {{1, 0, 0}}, {{0, 1, 0}}}
 	//vertices := []Vertex{{{0, 0, 0}}, {{1, 0, 0}}, {{1, 1, 0}}, {{0, 1, 0}}}
 	glBufferData(.ARRAY_BUFFER, raw_data(vertices), len(vertices) * size_of(Vertex), .STREAM_DRAW)
@@ -55,6 +60,11 @@ on_tick :: proc "c" () -> (save_power: bool) {
 	glVertexAttribPointer(location, position_count, .FLOAT, false, size_of(Vertex), offset_of(Vertex, position))
 	glEnableVertexAttribArray(location)
 	glDrawArrays(.TRIANGLES, 0, len(vertices))
+
+	//glpStep(window_width, window_height, true)
+	glpUseShader(&postprocessShader)
+	glpDrawCover()
+
 
 	glpSwapBuffers()
 	free_all(context.temp_allocator)
