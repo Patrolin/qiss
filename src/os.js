@@ -210,6 +210,8 @@ let step_width;
 let step_height;
 /** @type {number} */
 let activeProgram;
+/** @type {number|null} */
+let activeVao = null;
 /**
  * @param {BigInt} width
  * @param {BigInt} height
@@ -231,19 +233,19 @@ function glpStep(width, height, present) {
   step_width = Number(width);
   step_height = Number(height);
   gl.bindVertexArray(step.vao);
+  activeVao = step.vao;
   gl.bindBuffer(gl.ARRAY_BUFFER, step.vbo);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, step.ebo);
   glpStepIndex++;
 }
 function glpDrawCover() {
+  // TODO: move the VAO to `glpUseShader()`
   gl.bindVertexArray(glpDrawCover_data.vao);
-  gl.bindBuffer(gl.ARRAY_BUFFER, glpDrawCover_data.vbo);
   const resolution_location = gl.getUniformLocation(activeProgram, "resolution");
   gl.uniform2f(resolution_location, step_width, step_height);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 
-  gl.bindVertexArray(null);
-  gl.bindBuffer(gl.ARRAY_BUFFER, null);
+  gl.bindVertexArray(activeVao);
 }
 function glpSwapBuffers() {
   glpStepIndex = 0;

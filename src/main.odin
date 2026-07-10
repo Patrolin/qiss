@@ -51,6 +51,9 @@ on_tick :: proc "c" () -> (save_power: bool) {
 	glClearColor(0, 0, 0, 1)
 	glClear({.COLOR_BUFFER_BIT})
 
+	glpUseShader(&postprocessShader)
+	glpDrawCover()
+
 	glpUseShader(&drawShader)
 	vertices := []Vertex{{{-1, -1, 0}}, {{1, 0, 0}}, {{0, 1, 0}}}
 	//vertices := []Vertex{{{0, 0, 0}}, {{1, 0, 0}}, {{1, 1, 0}}, {{0, 1, 0}}}
@@ -62,8 +65,6 @@ on_tick :: proc "c" () -> (save_power: bool) {
 	glDrawArrays(.TRIANGLES, 0, len(vertices))
 
 	//glpStep(window_width, window_height, true)
-	glpUseShader(&postprocessShader)
-	glpDrawCover()
 
 
 	glpSwapBuffers()
