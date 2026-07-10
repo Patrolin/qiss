@@ -41,7 +41,7 @@ function load_slice(slice_ptr) {
 
 // files
 /** @type {Map<number, any>} */
-const handles = new Map();
+const handles = new Map([[-1, null]]);
 let next_handle = 0;
 /**
  * @param {any} value
@@ -131,8 +131,8 @@ window.addEventListener("pointercancel", (event) => {
 // opengl
 /** @type {WebGL2RenderingContext} */
 let gl;
-/** @type {{vbo: WebGLBuffer, vao: WebGLVertexArrayObject}} */
-let glpDrawCover_data;
+/** @type {{vbo: number, vao: number}} */
+let glpCover_handles;
 
 /** @return {BigInt} */
 function glpNewContext() {
@@ -140,12 +140,11 @@ function glpNewContext() {
   gl = canvas.getContext("webgl2", {antialias: false});
   if (gl == null) throw new Error("Your browser does not support WebGL!");
   console.log(gl.getParameter(gl.VERSION));
-  // setup glpCoverStep
+  // setup glpCover_handles
   const vao = gl.createVertexArray();
   const vbo = gl.createBuffer();
   gl.bindVertexArray(vao);
   gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-
   const vertices = new Float32Array([-1, -1, 3, -1, -1, 3]);
   gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
   const location = 0;
@@ -153,8 +152,11 @@ function glpNewContext() {
   const vertexSize = positionCount*4;
   gl.vertexAttribPointer(location, positionCount, gl.FLOAT, false, vertexSize, 0);
   gl.enableVertexAttribArray(location);
+  glpCover_handles = {
+    vao: newHandle(vao),
+    vbo: newHandle(vbo),
+  };
 
-  glpDrawCover_data = {vao, vbo};
   gl.bindVertexArray(null);
   gl.bindBuffer(gl.ARRAY_BUFFER, null);
   return BigInt(newHandle(gl));
@@ -165,20 +167,35 @@ function glpNewContext() {
 function glpSetContext(gl_handle) {
   gl = handles.get(Number(gl_handle));
 }
+const GLP_COVER = 0x1;
 /**
  * @param {BigInt} shader_ptr
  * @return {BigInt} */
 function glpCompileShader(shader_ptr) {
-  const data = new BigUint64Array(memory.buffer, shader_ptr, 5);
+  const HEADER_SIZE = 5;
+  const SHADER_TYPES = [gl.VERTEX_SHADER, gl.FRAGMENT_SHADER];
+  const data = new BigUint64Array(memory.buffer, shader_ptr, HEADER_SIZE + SHADER_TYPES.length*2);
   // create program
   const program = gl.createProgram();
-  const programHandle = BigInt(newHandle(program))
+  const programHandle = BigInt(newHandle(program));
   data[0] = BigInt(programHandle);
+  const flags = Number(data[4]);
+  if (flags & GLP_COVER) {
+    data[1] = BigInt(glpCover_handles.vao);
+    data[2] = BigInt(glpCover_handles.vbo);
+    data[3] = BigInt(-1);
+  } else {
+    const vao = gl.createVertexArray();
+    const vbo = gl.createBuffer();
+    const ebo = gl.createBuffer();
+    data[1] = BigInt(newHandle(vao));
+    data[2] = BigInt(newHandle(vbo));
+    data[3] = BigInt(newHandle(ebo));
+  }
   // compile shaders
-  const shaderTypes = [gl.VERTEX_SHADER, gl.FRAGMENT_SHADER];
-  for (let i = 0; i < shaderTypes.length; i++) {
-    const shaderType = shaderTypes[i];
-    const shaderSource = string(data[i*2 + 1], data[i*2 + 2])
+  for (let i = 0; i < SHADER_TYPES.length; i++) {
+    const shaderType = SHADER_TYPES[i];
+    const shaderSource = string(data[i*2 + HEADER_SIZE], data[i*2 + HEADER_SIZE + 1])
     if (!shaderSource) continue;
     const shader = gl.createShader(Number(shaderType));
     assert(shader != null, "shader != null");
@@ -200,62 +217,94 @@ function glpCompileShader(shader_ptr) {
   }
   return programHandle;
 }
-/** @type {{vao: WebGLVertexArrayObject, vbo: WebGLBuffer, ebo: WebGLBuffer}[]} */
+/** @type {{fbo: WebGLBuffer, width: number, height: number}[]} */
 const glpSteps = [];
-let glpStepIndex = 0;
-const GLP_PRESENT = 0x1;
-/** @type {number} */
-let step_width;
-/** @type {number} */
-let step_height;
-/** @type {number} */
-let activeProgram;
-/** @type {number|null} */
-let activeVao = null;
+let glpStepIndex = -1;
 /**
  * @param {BigInt} width
  * @param {BigInt} height
  * @param {boolean} present */
 function glpStep(width, height, present) {
-  // TODO: handle `present`
+  width = Number(width);
+  height = Number(height);
+  // unbind previous buffers
+  gl.bindVertexArray(null);
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+  // create a new framebuffer
+  if (++glpStepIndex >= glpSteps.length) {
+    /** @type {WebGLFramebuffer|null} */
+    let fbo = null;
+    if (!present) {
+      // create the framebuffer texture
+      const texture = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, width, height, 0, gl.RGB, gl.UNSIGNED_BYTE, null);
+      //gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, width, height, 0, gl.RGBA, gl.FLOAT, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      gl.bindTexture(gl.TEXTURE_2D, null);
+      // create the framebuffer
+      fbo = gl.createFramebuffer();
+      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, fbo);
+      gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+      const fboStatus = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+      if (fboStatus != gl.FRAMEBUFFER_COMPLETE) {
+        const fboStatus_to_errorMessage = {
+          [gl.FRAMEBUFFER_INCOMPLETE_ATTACHMENT]: "FRAMEBUFFER_INCOMPLETE_ATTACHMENT",
+          [gl.FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT]: "FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT",
+          [gl.FRAMEBUFFER_INCOMPLETE_DIMENSIONS]: "FRAMEBUFFER_INCOMPLETE_DIMENSIONS",
+          [gl.FRAMEBUFFER_UNSUPPORTED]: "FRAMEBUFFER_UNSUPPORTED",
+          [gl.FRAMEBUFFER_INCOMPLETE_MULTISAMPLE]: "FRAMEBUFFER_INCOMPLETE_MULTISAMPLE",
+        }
+        throw new Error(`Failed to initialize FBO: ${fboStatus_to_errorMessage[fboStatus]}`);
+      }
+      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+    }
+    glpSteps.push({fbo, width, height});
+  }
+  const step = glpSteps[glpStepIndex];
+  if (!present) {
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, step.fbo);
+  }
+	gl.viewport(0, 0, width, height);
+  step.width = width;
+  step.height = height;
+}
+/** @type {number} */
+let activeProgram;
+/** @param {BigInt} shader_ptr */
+function glpUseShader(shader_ptr) {
   gl.bindVertexArray(null);
   gl.bindBuffer(gl.ARRAY_BUFFER, null);
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
 
-  if (glpStepIndex >= glpSteps.length) {
-    const vao = gl.createVertexArray();
-    const vbo = gl.createBuffer();
-    const ebo = gl.createBuffer();
-    glpSteps.push({vao, vbo, ebo});
-  }
-  const step = glpSteps[glpStepIndex];
-	gl.viewport(0, 0, Number(width), Number(height));
-  step_width = Number(width);
-  step_height = Number(height);
-  gl.bindVertexArray(step.vao);
-  activeVao = step.vao;
-  gl.bindBuffer(gl.ARRAY_BUFFER, step.vbo);
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, step.ebo);
-  glpStepIndex++;
-}
-function glpDrawCover() {
-  // TODO: move the VAO to `glpUseShader()`
-  gl.bindVertexArray(glpDrawCover_data.vao);
-  const resolution_location = gl.getUniformLocation(activeProgram, "resolution");
-  gl.uniform2f(resolution_location, step_width, step_height);
-  gl.drawArrays(gl.TRIANGLES, 0, 3);
-
-  gl.bindVertexArray(activeVao);
-}
-function glpSwapBuffers() {
-  glpStepIndex = 0;
-}
-/** @param {BigInt} shader_ptr */
-function glpUseShader(shader_ptr) {
-  const data = new BigUint64Array(memory.buffer, shader_ptr, 1);
+  const data = new BigUint64Array(memory.buffer, shader_ptr, 4);
   const program = handles.get(Number(data[0]));
   gl.useProgram(program);
   activeProgram = program;
+  const vao = handles.get(Number(data[1]));
+  const vbo = handles.get(Number(data[2]));
+  const ebo = handles.get(Number(data[3]));
+  gl.bindVertexArray(vao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo);
+}
+function glpDrawCover() {
+  if (glpStepIndex > 0 && false) {
+    const prevStep = glpSteps[glpStepIndex-1];
+    const prevResolution_location = gl.getUniformLocation(activeProgram, "prev_resolution");
+    gl.uniform2f(prevResolution_location, prevStep.width, prevStep.height);
+  }
+  const step = glpSteps[glpStepIndex];
+  const resolution_location = gl.getUniformLocation(activeProgram, "resolution");
+  gl.uniform2f(resolution_location, step.width, step.height);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+function glpSwapBuffers() {
+  glpStepIndex = -1;
 }
 function glBufferData(type, buffer_data, buffer_size, usage) {
   const buffer = slice_of_byte(buffer_data, buffer_size);

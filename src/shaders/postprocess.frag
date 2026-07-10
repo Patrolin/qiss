@@ -1,6 +1,8 @@
 #version 300 es
 precision mediump float;
 
+//uniform sampler2D prev;
+//uniform vec2 prev_resolution;
 uniform vec2 resolution;
 out vec4 out_color;
 void main() {

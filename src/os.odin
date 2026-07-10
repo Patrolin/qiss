@@ -55,12 +55,22 @@ WindowEventType :: enum int {
 // opengl
 GlHandle :: distinct FileHandle
 GlProgram :: distinct GlHandle
+GlVAO :: distinct GlHandle
+GlVBO :: distinct GlHandle
+GlEBO :: distinct GlHandle
 GlShaderType :: enum int {
 	FRAGMENT_SHADER = 35632,
 	VERTEX_SHADER   = 35633,
 }
+GlShaderFlags :: bit_set[enum int {
+	Cover,
+};int]
 GlShader :: struct {
 	program:  GlProgram,
+	vao:      GlVAO,
+	vbo:      GlVBO,
+	ebo:      GlEBO,
+	flags:    GlShaderFlags,
 	vertex:   string,
 	fragment: string,
 }

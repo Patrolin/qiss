@@ -7,6 +7,7 @@ drawShader := GlShader {
 	fragment = #load("shaders/draw.frag", string),
 }
 postprocessShader := GlShader {
+	flags    = {.Cover},
 	vertex   = #load("shaders/cover.vert", string),
 	fragment = #load("shaders/postprocess.frag", string),
 }
@@ -46,26 +47,46 @@ on_event :: proc "c" (type: WindowEventType, ns, x, y: int) {
 @(export)
 on_tick :: proc "c" () -> (save_power: bool) {
 	context = defaultContext
-	//glpStep(window_width, window_height)
-	glpStep(window_width, window_height, true)
-	glClearColor(0, 0, 0, 1)
-	glClear({.COLOR_BUFFER_BIT})
+	if false {
+		// draw triangle
+		glpStep(window_width, window_height, true)
+		glClearColor(0, 0, 0, 1)
+		glClear({.COLOR_BUFFER_BIT})
 
-	glpUseShader(&postprocessShader)
-	glpDrawCover()
+		glpUseShader(&postprocessShader)
+		glpDrawCover()
 
-	glpUseShader(&drawShader)
-	vertices := []Vertex{{{-1, -1, 0}}, {{1, 0, 0}}, {{0, 1, 0}}}
-	//vertices := []Vertex{{{0, 0, 0}}, {{1, 0, 0}}, {{1, 1, 0}}, {{0, 1, 0}}}
-	glBufferData(.ARRAY_BUFFER, raw_data(vertices), len(vertices) * size_of(Vertex), .STREAM_DRAW)
-	location := 0
-	position_count := len(vertices[0].position)
-	glVertexAttribPointer(location, position_count, .FLOAT, false, size_of(Vertex), offset_of(Vertex, position))
-	glEnableVertexAttribArray(location)
-	glDrawArrays(.TRIANGLES, 0, len(vertices))
+		glpUseShader(&drawShader)
+		vertices := []Vertex{{{-1, -1, 0}}, {{1, 0, 0}}, {{0, 1, 0}}}
+		glBufferData(.ARRAY_BUFFER, raw_data(vertices), len(vertices) * size_of(Vertex), .STREAM_DRAW)
 
-	//glpStep(window_width, window_height, true)
+		location := 0
+		position_count := len(vertices[0].position)
+		glVertexAttribPointer(location, position_count, .FLOAT, false, size_of(Vertex), offset_of(Vertex, position))
+		glEnableVertexAttribArray(location)
+		glDrawArrays(.TRIANGLES, 0, len(vertices))
+	} else {
+		// draw triangle
+		glpStep(window_width, window_height)
+		glClearColor(0.1, 0, 0, 1)
+		glClear({.COLOR_BUFFER_BIT})
 
+		//glpUseShader(&drawShader)
+		//vertices := []Vertex{{{-1, -1, 0}}, {{1, 0, 0}}, {{0, 1, 0}}}
+		//glBufferData(.ARRAY_BUFFER, raw_data(vertices), len(vertices) * size_of(Vertex), .STREAM_DRAW)
+		//location := 0
+		//position_count := len(vertices[0].position)
+		//glVertexAttribPointer(location, position_count, .FLOAT, false, size_of(Vertex), offset_of(Vertex, position))
+		//glEnableVertexAttribArray(location)
+		//glDrawArrays(.TRIANGLES, 0, len(vertices))
+		// do postprocessing
+		glpStep(window_width, window_height, true)
+		glClearColor(0, 0, 0, 1)
+		glClear({.COLOR_BUFFER_BIT})
+
+		glpUseShader(&postprocessShader)
+		glpDrawCover()
+	}
 
 	glpSwapBuffers()
 	free_all(context.temp_allocator)
