@@ -264,6 +264,9 @@ function glpStep(width, height, present) {
   if (present) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   } else {
+    gl.bindTexture(gl.TEXTURE_2D, step.texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.bindTexture(gl.TEXTURE_2D, null);
     gl.bindFramebuffer(gl.FRAMEBUFFER, step.fbo);
   }
   gl.activeTexture(gl.TEXTURE0);
