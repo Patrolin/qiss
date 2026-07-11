@@ -219,11 +219,6 @@ let glpStepIndex = -1;
 function glpStep(width, height, present) {
   width = Number(width);
   height = Number(height);
-  if (glpStepIndex >= 0) {
-    const data = new Uint8Array(width * height * 4);
-    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, data);
-    console.log({glpStepIndex, data});
-  }
   // create a new framebuffer
   if (++glpStepIndex >= glpSteps.length) {
     /** @type {WebGLTexture|null} */
@@ -264,9 +259,11 @@ function glpStep(width, height, present) {
   if (present) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   } else {
-    gl.bindTexture(gl.TEXTURE_2D, step.texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-    gl.bindTexture(gl.TEXTURE_2D, null);
+    if (step.width !== width || step.height !== height) {
+      gl.bindTexture(gl.TEXTURE_2D, step.texture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.bindTexture(gl.TEXTURE_2D, null);
+    }
     gl.bindFramebuffer(gl.FRAMEBUFFER, step.fbo);
   }
   gl.activeTexture(gl.TEXTURE0);
