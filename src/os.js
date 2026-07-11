@@ -140,16 +140,17 @@ function glpNewContext() {
   gl = canvas.getContext("webgl2", {antialias: false});
   if (gl == null) throw new Error("Your browser does not support WebGL!");
   console.log(gl.getParameter(gl.VERSION));
+  // setup glpCover vao
+  const vao = gl.createVertexArray();
+  gl.bindVertexArray(vao);
   // setup glpCover vbo
   const vbo = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
   const vertices = new Float32Array([-1, -1, 0, 3, -1, 0, -1, 3, 0]);
   gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
-  // setup glpCover vao
-  const vao = gl.createVertexArray();
-  gl.bindVertexArray(vao);
+  // setup glpCover vertex attributes for the vbo (also gets remembered by vao if bound)
   const location = 0;
-  const positionCount = 2;
+  const positionCount = 3;
   const vertexSize = positionCount*4;
   gl.vertexAttribPointer(location, positionCount, gl.FLOAT, false, vertexSize, 0);
   gl.enableVertexAttribArray(location);
@@ -218,10 +219,11 @@ let glpStepIndex = -1;
 function glpStep(width, height, present) {
   width = Number(width);
   height = Number(height);
-  // unbind previous buffers
-  gl.bindVertexArray(null);
-  gl.bindBuffer(gl.ARRAY_BUFFER, null);
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+  if (glpStepIndex >= 0) {
+    const data = new Uint8Array(width * height * 4);
+    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, data);
+    console.log({glpStepIndex, data});
+  }
   // create a new framebuffer
   if (++glpStepIndex >= glpSteps.length) {
     /** @type {WebGLTexture|null} */
@@ -230,10 +232,9 @@ function glpStep(width, height, present) {
     let fbo = null;
     if (!present) {
       // create the framebuffer texture
-      const texture = gl.createTexture();
-      gl.activeTexture(gl.TEXTURE0);
+      texture = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, texture);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, width, height, 0, gl.RGB, gl.UNSIGNED_BYTE, null);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
       //gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, width, height, 0, gl.RGBA, gl.FLOAT, null);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -265,6 +266,12 @@ function glpStep(width, height, present) {
   } else {
     gl.bindFramebuffer(gl.FRAMEBUFFER, step.fbo);
   }
+  gl.activeTexture(gl.TEXTURE0);
+  if (glpStepIndex > 0) {
+    gl.bindTexture(gl.TEXTURE_2D, glpSteps[glpStepIndex-1].texture);
+  } else {
+    gl.bindTexture(gl.TEXTURE_2D, null);
+  }
 	gl.viewport(0, 0, width, height);
   step.width = width;
   step.height = height;
@@ -289,20 +296,10 @@ function glpUseShader(shader_ptr) {
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ebo);
 }
 function glpDrawCover() {
-  if (glpStepIndex > 0 && false) {
-    const prevStep = glpSteps[glpStepIndex-1];
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, prevStep.texture);
-    const prev_location = gl.getUniformLocation(activeProgram, "prev");
-    gl.uniform1i(prev_location, 0);
-    const prevResolution_location = gl.getUniformLocation(activeProgram, "prev_resolution");
-    gl.uniform2f(prevResolution_location, prevStep.width, prevStep.height);
-  }
   const step = glpSteps[glpStepIndex];
   const resolution_location = gl.getUniformLocation(activeProgram, "resolution");
   gl.uniform2f(resolution_location, step.width, step.height);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
-  // TODO: why does the framebuffer texture not work??
 }
 function glpSwapBuffers() {
   glpStepIndex = -1;
@@ -327,7 +324,6 @@ const WASM_IMPORTS = {
     wasm_printInt: console.log,
     wasm_write,
     glpNewContext,
-    glpSetContext,
     glpCompileShader,
     glpStep,
     glpUseShader,
