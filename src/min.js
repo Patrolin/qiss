@@ -95,11 +95,11 @@ async function fetchString(url) {
 document.addEventListener("DOMContentLoaded", async () => {
   // init
   const drawProgram = {
-    vertex: await fetchString("src/shaders/draw.vert"),
+    vertex: await fetchString("src/shaders/direct.vert"),
     fragment: await fetchString("src/shaders/draw.frag"),
   };
   const postprocessProgram = {
-    vertex: await fetchString("src/shaders/draw.vert"),
+    vertex: await fetchString("src/shaders/direct.vert"),
     fragment: await fetchString("src/shaders/postprocess.frag"),
   };
   canvas = document.querySelector("canvas");
@@ -151,6 +151,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     gl.enableVertexAttribArray(location);
     gl.drawArrays(gl.TRIANGLES, 0, vertex_count);
   })();
+  const data = new Uint8Array(width * height * 4);
+  gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, data);
+  console.log(data);
 
   // postprocess
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);

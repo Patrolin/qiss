@@ -3,12 +3,12 @@ import "base:runtime"
 
 // files
 drawShader := GlShader {
-	vertex   = #load("shaders/draw.vert", string),
+	vertex   = #load("shaders/direct.vert", string),
 	fragment = #load("shaders/draw.frag", string),
 }
 postprocessShader := GlShader {
 	flags    = {.Cover},
-	vertex   = #load("shaders/cover.vert", string),
+	vertex   = #load("shaders/direct.vert", string),
 	fragment = #load("shaders/postprocess.frag", string),
 }
 

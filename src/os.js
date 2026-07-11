@@ -143,7 +143,7 @@ function glpNewContext() {
   // setup glpCover vbo
   const vbo = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-  const vertices = new Float32Array([-1, -1, 3, -1, -1, 3]);
+  const vertices = new Float32Array([-1, -1, 0, 3, -1, 0, -1, 3, 0]);
   gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
   // setup glpCover vao
   const vao = gl.createVertexArray();
