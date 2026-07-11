@@ -135,7 +135,6 @@ let gl;
 /** @type {{vao: number, vbo: number}} */
 let glpCover_handles;
 
-/** @return {BigInt} */
 function glpNewContext() {
   // new context
   gl = canvas.getContext("webgl2", {antialias: false});
@@ -160,18 +159,10 @@ function glpNewContext() {
   };
   gl.bindVertexArray(null);
   gl.bindBuffer(gl.ARRAY_BUFFER, null);
-  return BigInt(newHandle(gl));
-}
-/**
- * @param {BigInt} gl_handle
- * @return {BigInt} */
-function glpSetContext(gl_handle) {
-  gl = handles.get(Number(gl_handle));
 }
 const GLP_COVER = 0x1;
 /**
- * @param {BigInt} shader_ptr
- * @return {BigInt} */
+ * @param {BigInt} shader_ptr */
 function glpCompileShader(shader_ptr) {
   const HEADER_SIZE = 5;
   const SHADER_TYPES = [gl.VERTEX_SHADER, gl.FRAGMENT_SHADER];
@@ -216,7 +207,6 @@ function glpCompileShader(shader_ptr) {
     const info = gl.getProgramInfoLog(program);
     throw new Error(info);
   }
-  return programHandle;
 }
 /** @type {{texture: WebGLTexture, fbo: WebGLBuffer, width: number, height: number}[]} */
 const glpSteps = [];

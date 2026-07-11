@@ -116,8 +116,7 @@ GlDrawMode :: enum int {
 when ODIN_ARCH == .wasm64p32 {
 	@(default_calling_convention = "c")
 	foreign env {
-		glpNewContext :: proc() -> GlHandle ---
-		glpSetContext :: proc(gl: GlHandle) ---
+		glpNewContext :: proc() ---
 		glpCompileShader :: proc(shader: ^GlShader) ---
 		glpStep :: proc(width, height: int, present := false) ---
 		glpUseShader :: proc(shader: ^GlShader) ---
