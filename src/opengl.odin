@@ -68,10 +68,13 @@ when ODIN_ARCH == .wasm64p32 {
 	@(default_calling_convention = "c")
 	foreign env {
 		// glp
-		wasmGetWebGLContext :: proc() ---
+		wasmInitOpenGL :: proc() ---
 		glCreateVertexArray :: proc() -> GlVAO ---
 		glCreateArrayBuffer :: proc() -> GlVBO ---
 		glCreateElementBuffer :: proc() -> GlEBO ---
+		glBindVertexArray :: proc(vao: GlVAO) ---
+		glBindArrayBuffer :: proc(vbo: GlVBO) ---
+		glBindElementBuffer :: proc(vbo: GlEBO) ---
 		glCreateProgram :: proc() -> GlProgram ---
 		glCreateShader :: proc(type: GlShaderType) -> GlShader ---
 		glShaderSource :: proc(shader: GlShader, source_data: [^]byte, source_count: int) ---
@@ -84,20 +87,18 @@ when ODIN_ARCH == .wasm64p32 {
 		glValidateProgram :: proc(program: GlProgram) ---
 		glGetProgramParameter :: proc(program: GlProgram, param: GlProgramParam) -> i32 ---
 		glGetProgramInfoLog :: proc(program: GlProgram, buffer_size: i32, written_size: ^i32, buffer: [^]byte) ---
+		glUseProgram :: proc(program: GlProgram) ---
 		glViewport :: proc(#any_int x, y, width, height: i32) ---
 		// gl userspace
 		glClearColor :: proc(r, g, b, a: f64) ---
 		glClear :: proc(buffer_types: GlBufferBits) ---
-		glBindVertexArray :: proc(vao: GlVAO) ---
-		glBindArrayBuffer :: proc(vbo: GlVBO) ---
-		glBindElementBuffer :: proc(vbo: GlEBO) ---
 		glBufferData :: proc(type: GlBufferType, buffer: rawptr, buffer_size: int, usage: GlBufferUsage) ---
 		glVertexAttribPointer :: proc(#any_int location: u32, #any_int count: i32, type: GlType, normalize: bool, #any_int vertex_size: u32, #any_int offset: uintptr) ---
 		glEnableVertexAttribArray :: proc(#any_int location: u32) ---
-		glUseProgram :: proc(program: GlProgram) ---
 		glGetUniformLocation :: proc(program: GlProgram, name: cstring) -> GlLocation ---
 		glUniform2f :: proc(location: GlLocation, x, y: f32) ---
 		glDrawArrays :: proc(mode: GlDrawMode, #any_int start, count: i32) ---
+		glDrawArraysInstanced :: proc(mode: GlDrawMode, #any_int start, count, instanceCount: i32) ---
 	}
 }
 
@@ -135,9 +136,10 @@ glpPreviousStep := (^GlpStep)(nil)
 glpCurrentStep := (^GlpStep)(nil)
 glpActiveProgram := GlProgram(0)
 
-glpNewContext :: proc() {
+// gl userspace
+glpInit :: proc() {
 	when ODIN_ARCH == .wasm64p32 {
-		wasmGetWebGLContext()
+		wasmInitOpenGL()
 	} else {
 		assert(false)
 	}

@@ -155,9 +155,6 @@ let gl;
 /** @type {{vao: number, vbo: number}} */
 let glpCover_handles;
 
-function wasmGetWebGLContext() {
-  gl = canvas.getContext("webgl2", {antialias: false});
-}
 function glpNewContext() {
   // new context
   gl = canvas.getContext("webgl2", {antialias: false});
@@ -327,125 +324,86 @@ function glpDrawCover() {
 function glpSwapBuffers() {
   glpStepIndex = -1;
 }
-// glp
-function glCreateVertexArray() {
-  return newHandle(gl.createVertexArray());
+// opengl
+function wasmInitOpenGL() {
+  gl = canvas.getContext("webgl2", {antialias: false});
 }
-function glCreateArrayBuffer() {
-  return newHandle(gl.createBuffer(gl.ARRAY_BUFFER));
-}
-function glCreateElementBuffer() {
-  return newHandle(gl.createBuffer(gl.ELEMENT_ARRAY_BUFFER));
-}
-function glCreateProgram() {
-  return newHandle(gl.createProgram());
-}
-/** @param {number} shaderType */
-function glCreateShader(shaderType) {
-  return newHandle(gl.createShader(shaderType));
-}
-/**
- * @param {number} vao_handle
- * @param {BigInt} source_data
- * @param {BigInt} source_count */
-function glShaderSource(shader_handle, source_data, source_count) {
-  const shader = handles.get(shader_handle);
-  const shaderSource = string(source_data, source_count);
-  gl.shaderSource(shader, shaderSource);
-}
-/**
- * @param {number} shader_handle
- * @param {number} buffer_size
- * @param {BigInt} written_size_ptr
- * @param {BigInt} buffer_ptr */
-function glGetShaderInfoLog(shader_handle, buffer_size, written_size_ptr, buffer_ptr) {
-  const shader = handles.get(shader_handle);
-  const buffer = slice_of_bytes(buffer_ptr, buffer_size);
-  const log = gl.getShaderInfoLog(shader);
-  const result = new TextEncoder().encodeInto(log, buffer);
-  const written_size = slice_of_i32(written_size_ptr, 1);
-  written_size[0] = result.written;
-}
-/**
- * @param {number} program_handle
- * @param {number} buffer_size
- * @param {BigInt} written_size_ptr
- * @param {BigInt} buffer_ptr */
-function glGetProgramInfoLog(program_handle, buffer_size, written_size_ptr, buffer_ptr) {
-  const program = handles.get(program_handle);
-  const buffer = slice_of_bytes(buffer_ptr, buffer_size);
-  const log = gl.getProgramInfoLog(program);
-  const result = new TextEncoder().encodeInto(log, buffer);
-  const written_size = slice_of_i32(written_size_ptr, 1);
-  written_size[0] = result.written;
-}
-/**
- * @param {number} program_handle
- * @param {number} shader_handle */
-function glAttachShader(program_handle, shader_handle) {
-  const program = handles.get(program_handle);
-  const shader = handles.get(shader_handle);
-  gl.attachShader(program, shader);
-}
-// gl userspace
-/** @param {number} vao_handle */
-function glBindVertexArray(vao_handle) {
-  const vao = handles.get(vao_handle);
-  gl.bindVertexArray(vao);
-}
-/** @param {number} arrayBuffer_handle */
-function glBindArrayBuffer(arrayBuffer_handle) {
-  const arrayBuffer = handles.get(arrayBuffer_handle);
-  gl.bindBuffer(gl.ARRAY_BUFFER, arrayBuffer);
-}
-/** @param {number} elementBuffer_handle */
-function glBindElementBuffer(elementBuffer_handle) {
-  const elementBuffer = handles.get(elementBuffer_handle);
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
-}
-/**
- * @param {number} type
- * @param {BigInt} buffer_ptr
- * @param {BigInt} buffer_size
- * @param {number} usage */
-function glBufferData(type, buffer_data, buffer_size, usage) {
-  const buffer = slice_of_bytes(buffer_data, buffer_size);
-  gl.bufferData(type, buffer, usage);
-}
-/**
- * @param {number} program_handle
- * @param {BigInt} name_cstr */
-function glGetUniformLocation(program_handle, name_cstr) {
-  const name = cstring(name_cstr)
-  const program = handles.get(program_handle, name);
-  return newHandle(gl.getUniformLocation(program, name));
-}
-const oneHandleGlProcs = Object.fromEntries([
-  "glCompileShader",
-  "glGetShaderParameter",
-  "glDeleteShader",
-  "glLinkProgram",
-  "glValidateProgram",
-  "glGetProgramParameter",
-  "glUseProgram",
-  "glUniform2f",
-].map(key => {
-  const webglKey = key[2].toLowerCase() + key.slice(3);
-  return [key, (one_handle, ...args) => {
-    const one = handles.get(one_handle);
-    return gl[webglKey](one, ...args);
+const glProcs = Object.fromEntries(Object.entries({
+  glCreateVertexArray: () => newHandle(gl.createVertexArray()),
+  glCreateArrayBuffer: () => newHandle(gl.createBuffer(gl.ARRAY_BUFFER)),
+  glCreateElementBuffer: () => newHandle(gl.createBuffer(gl.ELEMENT_ARRAY_BUFFER)),
+  glBindVertexArray: 1,
+  glBindArrayBuffer: (arrayBuffer_handle) => {
+    const arrayBuffer = handles.get(arrayBuffer_handle);
+    gl.bindBuffer(gl.ARRAY_BUFFER, arrayBuffer);
+  },
+  glBindElementBuffer: (elementBuffer_handle) => {
+    const elementBuffer = handles.get(elementBuffer_handle);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer);
+  },
+  glCreateProgram: () => newHandle(gl.createProgram()),
+  glCreateShader: (shaderType) => newHandle(gl.createShader(shaderType)),
+  glShaderSource: (shader_handle, source_data, source_count) => {
+    const shader = handles.get(shader_handle);
+    const shaderSource = string(source_data, source_count);
+    gl.shaderSource(shader, shaderSource);
+  },
+  glCompileShader: 1,
+  glGetShaderParameter: 1,
+  glGetShaderInfoLog: (shader_handle, buffer_size, written_size_ptr, buffer_ptr) => {
+    const shader = handles.get(shader_handle);
+    const buffer = slice_of_bytes(buffer_ptr, buffer_size);
+    const log = gl.getShaderInfoLog(shader);
+    const result = new TextEncoder().encodeInto(log, buffer);
+    const written_size = slice_of_i32(written_size_ptr, 1);
+    written_size[0] = result.written;
+  },
+  glAttachShader: 2,
+  glDeleteShader: 1,
+  glLinkProgram: 1,
+  glValidateProgram: 1,
+  glGetProgramParameter: 1,
+  glGetProgramInfoLog: (program_handle, buffer_size, written_size_ptr, buffer_ptr) => {
+    const program = handles.get(program_handle);
+    const buffer = slice_of_bytes(buffer_ptr, buffer_size);
+    const log = gl.getProgramInfoLog(program);
+    const result = new TextEncoder().encodeInto(log, buffer);
+    const written_size = slice_of_i32(written_size_ptr, 1);
+    written_size[0] = result.written;
+  },
+  glUseProgram: 1,
+  glViewport: 0,
+  // gl userspace
+  glClearColor: 0,
+  glClear: 0,
+  glBufferData: (type, buffer_data, buffer_size, usage) => {
+    const buffer = slice_of_bytes(buffer_data, buffer_size);
+    gl.bufferData(type, buffer, usage);
+  },
+  glVertexAttribPointer: 0,
+  glEnableVertexAttribArray: 0,
+  glGetUniformLocation: (program_handle, name_cstr) => {
+    const name = cstring(name_cstr)
+    const program = handles.get(program_handle, name);
+    return newHandle(gl.getUniformLocation(program, name));
+  },
+  glUniform2f: 1,
+  glDrawArrays: 0,
+  glDrawArraysInstanced: 0,
+}).map(([k, v]) => {
+  const webglKey = k[2].toLowerCase() + k.slice(3);
+  if (typeof v === "function") return [k, v];
+  if (v === 0) return [k, (...args) => gl[webglKey](...args)];
+  if (v === 1) return [k, (first_handle, ...args) => {
+    const first = handles.get(first_handle);
+    return gl[webglKey](first, ...args);
   }];
-}));
-const simpleGlProcs = Object.fromEntries([
-  "glViewport",
-  "glClearColor",
-  "glClear",
-  "glDrawArrays",
-  "glVertexAttribPointer",
-  "glEnableVertexAttribArray",
-].map(key => {
-  const webglKey = key[2].toLowerCase() + key.slice(3);
-  return [key, (...args) => gl[webglKey](...args)];
+  if (v === 2) return [k, (first_handle, second_handle, ...args) => {
+    const first = handles.get(first_handle);
+    const second = handles.get(second_handle);
+    return gl[webglKey](first, second, ...args);
+  }];
+  throw new RangeError();
 }));
 
 // run the wasm
@@ -453,25 +411,8 @@ const WASM_IMPORTS = {
   env: {
     wasm_printInt: console.log,
     wasm_write,
-    // glp
-    wasmGetWebGLContext,
-    glCreateVertexArray,
-    glCreateArrayBuffer,
-    glCreateElementBuffer,
-    glCreateProgram,
-    glCreateShader,
-    glShaderSource,
-    glGetShaderInfoLog,
-    glAttachShader,
-    glGetProgramInfoLog,
-    ...oneHandleGlProcs,
-    // gl userspace
-    glBindVertexArray,
-    glBindArrayBuffer,
-    glBindElementBuffer,
-    glBufferData,
-    glGetUniformLocation,
-    ...simpleGlProcs,
+    wasmInitOpenGL,
+    ...glProcs,
   },
 };
 const utf8_decoder = new TextDecoder();

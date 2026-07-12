@@ -28,7 +28,7 @@ on_start :: proc "c" () {
 	context.temp_allocator = arena_allocator(1024 * 1024)
 	//context.allocator = bump_allocator()
 	defaultContext = context
-	glpNewContext()
+	glpInit()
 	glpCompileShader(&drawShader)
 	glpCompileShader(&postprocessShader)
 }
