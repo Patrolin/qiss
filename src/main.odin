@@ -2,11 +2,11 @@ package main
 import "base:runtime"
 
 // files
-drawShader := GlShader {
+drawShader := GlpShader {
 	vertex   = #load("shaders/direct.vert", string),
 	fragment = #load("shaders/draw.frag", string),
 }
-postprocessShader := GlShader {
+postprocessShader := GlpShader {
 	flags    = {.Cover},
 	vertex   = #load("shaders/direct.vert", string),
 	fragment = #load("shaders/postprocess.frag", string),
@@ -48,7 +48,7 @@ on_event :: proc "c" (type: WindowEventType, ns, x, y: int) {
 on_tick :: proc "c" () -> (save_power: bool) {
 	context = defaultContext
 	// draw triangle
-	glpStep(window_width, window_height)
+	glpStep(nil, window_width, window_height)
 	glClearColor(0.5, 0, 0, 1)
 	glClear({.COLOR_BUFFER_BIT})
 
@@ -61,7 +61,7 @@ on_tick :: proc "c" () -> (save_power: bool) {
 	glEnableVertexAttribArray(location)
 	glDrawArrays(.TRIANGLES, 0, len(vertices))
 	// do postprocessing
-	glpStep(window_width, window_height, true)
+	glpStep(nil, window_width, window_height, true)
 	glpUseShader(&postprocessShader)
 	glpDrawCover()
 
