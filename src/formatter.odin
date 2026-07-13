@@ -11,6 +11,10 @@ sb_string :: proc(sb: StringBuilder) -> string {
 }
 
 // printf
+assertion_failure_proc: runtime.Assertion_Failure_Proc : proc(prefix, message: string, loc: runtime.Source_Code_Location) -> ! {
+	printf("%(%:%) %: %", f_str(loc.file_path), f_uint(loc.line), f_uint(loc.column), f_str(prefix), f_str(message))
+	unreachable()
+}
 print :: proc(str: string) {
 	when ODIN_ARCH == .wasm64p32 {
 		os_write(STDOUT, raw_data(str), len(str))
@@ -50,7 +54,7 @@ f_str_proc :: proc(sb: ^StringBuilder, formatter: ^Formatter) {
 	str := (runtime.Raw_String){([^]u8)(uintptr(formatter.value)), int(formatter.options)}
 	sb_print(sb, transmute(string)str)
 }
-f_uint :: proc(value: u64) -> Formatter {
+f_uint :: proc(#any_int value: u64) -> Formatter {
 	return Formatter{value, {}, f_uint_proc}
 }
 f_uint_proc :: proc(sb: ^StringBuilder, formatter: ^Formatter) {
