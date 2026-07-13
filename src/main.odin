@@ -27,7 +27,7 @@ on_start :: proc "c" () {
 	context = runtime.default_context()
 	context.assertion_failure_proc = assertion_failure_proc
 	context.temp_allocator = arena_allocator(1024 * 1024)
-	//context.allocator = bump_allocator()
+	context.allocator = eighth_allocator()
 	defaultContext = context
 	glpInit()
 	glpCompileShader(&drawShader)

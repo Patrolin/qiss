@@ -2,19 +2,42 @@ package main
 import "base:intrinsics"
 import "base:runtime"
 
-BumpAllocator :: struct {
-	next: uintptr,
-	end:  uintptr,
+MANTISSA_BITS :: 3
+MANTISSA_VALUE :: 1 << MANTISSA_BITS
+
+free_index :: proc(block_size: int) -> int {
+	if block_size < MANTISSA_VALUE {return block_size}
+	exponent := uint(63 - intrinsics.count_leading_zeros(block_size >> MANTISSA_BITS))
+	mantissa := uint((block_size >> exponent) & (MANTISSA_VALUE - 1))
+	float := int((exponent << MANTISSA_BITS) + mantissa)
+	return float
 }
-bump_allocator :: proc() -> runtime.Allocator {
-	data := os_grow_heap(size_of(BumpAllocator))
+alloc_index :: proc(size: int) -> int {
+	if size < MANTISSA_VALUE {return size}
+	exponent := uint(63 - intrinsics.count_leading_zeros(size >> MANTISSA_BITS))
+	mantissa := uint((size >> exponent) & (MANTISSA_VALUE - 1))
+	float := int((exponent << MANTISSA_BITS) + mantissa)
+	// round up
+	low_bits_mask := (1 << (exponent - 1))
+	if size & low_bits_mask != 0 {float += 1}
+	return float
+}
+
+EighthAllocator :: struct {
+	next:           uintptr,
+	end:            uintptr,
+	free_list_mask: [4]u64,
+	free_lists:     [256]uintptr,
+}
+eighth_allocator :: proc() -> runtime.Allocator {
+	data := os_grow_heap(size_of(EighthAllocator))
 	ptr := uintptr(raw_data(data))
-	bump := (^BumpAllocator)(ptr)
-	bump.next = ptr + size_of(BumpAllocator)
+	bump := (^EighthAllocator)(ptr)
+	bump.next = ptr + size_of(EighthAllocator)
 	bump.end = ptr + uintptr(len(data))
-	return runtime.Allocator{bump_allocator_proc, rawptr(ptr)}
+	return runtime.Allocator{eighth_allocator_proc, rawptr(ptr)}
 }
-bump_allocator_proc :: proc(
+eighth_allocator_proc :: proc(
 	allocator_data: rawptr,
 	mode: runtime.Allocator_Mode,
 	size, alignment: int,
@@ -25,7 +48,7 @@ bump_allocator_proc :: proc(
 	data: []byte,
 	err: runtime.Allocator_Error,
 ) {
-	bump := (^BumpAllocator)(allocator_data)
+	bump := (^EighthAllocator)(allocator_data)
 	#partial switch mode {
 	case .Alloc, .Alloc_Non_Zeroed, .Resize, .Resize_Non_Zeroed:
 		{
