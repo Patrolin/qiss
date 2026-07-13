@@ -41,7 +41,7 @@ bump_allocator_proc :: proc(
 			intrinsics.mem_zero(rawptr(next_ptr), size)
 			if old_memory != nil {
 				copy(data, ([^]u8)(old_memory)[:old_size])
-				// TODO: add to free list
+				assert(false, "TODO: add to free list")
 			}
 		}
 	case .Free:
