@@ -2,37 +2,45 @@ package main
 import "base:intrinsics"
 import "base:runtime"
 
-MANTISSA_BITS :: 3
+// float(mantissa=1, exponent=5)
+EXPONENT_OFFSET :: 0
+MANTISSA_BITS :: 1
 MANTISSA_VALUE :: 1 << MANTISSA_BITS
 
 @(private = "file")
 free_index :: proc(#any_int block_size: u64) -> u64 {
-	if block_size < MANTISSA_VALUE {return block_size}
+	//if block_size < 1 << (EXPONENT_OFFSET + MANTISSA_BITS) {return block_size >> EXPONENT_OFFSET}
 	exponent := 63 - intrinsics.count_leading_zeros(block_size >> MANTISSA_BITS)
 	mantissa := (block_size >> exponent) & (MANTISSA_VALUE - 1)
-	float := (exponent << MANTISSA_BITS) + mantissa
+	float := ((exponent - EXPONENT_OFFSET) << MANTISSA_BITS) + mantissa
 	return float
 }
 @(private = "file")
 alloc_index :: proc(#any_int size: u64) -> u64 {
-	if size < MANTISSA_VALUE {return size}
+	//if size < 1 << (EXPONENT_OFFSET + MANTISSA_BITS) {return size >> EXPONENT_OFFSET}
 	exponent := 63 - intrinsics.count_leading_zeros(size >> MANTISSA_BITS)
 	mantissa := (size >> exponent) & (MANTISSA_VALUE - 1)
-	float := (exponent << MANTISSA_BITS) + mantissa
+	float := ((exponent - EXPONENT_OFFSET) << MANTISSA_BITS) + mantissa
 	// round up
-	low_bits_mask := (u64(1) << (exponent - 1))
+	low_bits_mask := (u64(1) << (exponent)) - 1
 	if size & low_bits_mask != 0 {float += 1}
 	return float
 }
 
-BLOCK_IS_USED :: 1 << 63
-FreeBlock :: struct {
-	size_and_flags:  u64,
-	next_free_block: ^FreeBlock,
+BLOCK_IS_USED :: 1 << 31
+BlockHeader :: struct {
+	offset_right_and_flags: u32,
+	offset_left:            u32,
 }
-#assert(size_of(FreeBlock) == 16)
+FreeBlock :: struct {
+	using header: BlockHeader,
+	offset_next:  u32,
+}
+#assert(size_of(FreeBlock) == 12)
 
 eighth_alloc :: proc(eighth: ^EighthAllocator, size: int) -> uintptr {
+	printf("F: %, %, %", f_int(free_index(9)), f_int(free_index(12)), f_int(free_index(13)))
+	printf("A: %, %, %", f_int(alloc_index(9)), f_int(alloc_index(12)), f_int(alloc_index(13)))
 	// get desired size
 	size_index := alloc_index(size)
 	size_mask := u64(0xff) << size_index
@@ -54,13 +62,13 @@ eighth_alloc :: proc(eighth: ^EighthAllocator, size: int) -> uintptr {
 			next_heap_chunk := os_grow_heap(size)
 			eighth.end = uintptr(raw_data(next_heap_chunk)) + uintptr(len(next_heap_chunk))
 			next_free_block = (^FreeBlock)(raw_data(next_heap_chunk))
-			next_free_block.size_and_flags = u64(len(next_heap_chunk))
+			next_free_block.offset_right_and_flags = u32(len(next_heap_chunk))
 			break
 		}
 		available := eighth.available_free_lists[j]
 	}
 	// split block
-	next_free_block.size_and_flags |= BLOCK_IS_USED
+	next_free_block.offset_right_and_flags |= BLOCK_IS_USED
 	assert(false, "TODO: split block")
 	return 0
 }
