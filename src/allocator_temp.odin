@@ -31,18 +31,20 @@ arena_allocator_proc :: proc(
 	#partial switch mode {
 	case .Alloc, .Alloc_Non_Zeroed, .Resize, .Resize_Non_Zeroed:
 		{
+			// alloc
 			alignment_mask := uintptr(alignment - 1)
 			next_ptr := (arena.next + alignment_mask) & ~alignment_mask
 			next_end := next_ptr + uintptr(size)
 			arena.next = next_end
 			if next_end > arena.end {
 				err = .Out_Of_Memory
-			} else {
-				data = ([^]u8)(next_ptr)[:size]
-				intrinsics.mem_zero(rawptr(next_ptr), size)
-				if old_memory != nil {
-					copy(data, ([^]u8)(old_memory)[:old_size])
-				}
+				break
+			}
+			data = ([^]u8)(next_ptr)[:size]
+			intrinsics.mem_zero(rawptr(next_ptr), size)
+			// realloc
+			if old_memory != nil {
+				copy(data, ([^]u8)(old_memory)[:old_size])
 			}
 		}
 	case .Free_All:

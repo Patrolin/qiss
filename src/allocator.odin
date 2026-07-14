@@ -5,36 +5,81 @@ import "base:runtime"
 MANTISSA_BITS :: 3
 MANTISSA_VALUE :: 1 << MANTISSA_BITS
 
-free_index :: proc(block_size: int) -> int {
+@(private = "file")
+free_index :: proc(#any_int block_size: u64) -> u64 {
 	if block_size < MANTISSA_VALUE {return block_size}
-	exponent := uint(63 - intrinsics.count_leading_zeros(block_size >> MANTISSA_BITS))
-	mantissa := uint((block_size >> exponent) & (MANTISSA_VALUE - 1))
-	float := int((exponent << MANTISSA_BITS) + mantissa)
+	exponent := 63 - intrinsics.count_leading_zeros(block_size >> MANTISSA_BITS)
+	mantissa := (block_size >> exponent) & (MANTISSA_VALUE - 1)
+	float := (exponent << MANTISSA_BITS) + mantissa
 	return float
 }
-alloc_index :: proc(size: int) -> int {
+@(private = "file")
+alloc_index :: proc(#any_int size: u64) -> u64 {
 	if size < MANTISSA_VALUE {return size}
-	exponent := uint(63 - intrinsics.count_leading_zeros(size >> MANTISSA_BITS))
-	mantissa := uint((size >> exponent) & (MANTISSA_VALUE - 1))
-	float := int((exponent << MANTISSA_BITS) + mantissa)
+	exponent := 63 - intrinsics.count_leading_zeros(size >> MANTISSA_BITS)
+	mantissa := (size >> exponent) & (MANTISSA_VALUE - 1)
+	float := (exponent << MANTISSA_BITS) + mantissa
 	// round up
-	low_bits_mask := (1 << (exponent - 1))
+	low_bits_mask := (u64(1) << (exponent - 1))
 	if size & low_bits_mask != 0 {float += 1}
 	return float
 }
 
+BLOCK_IS_USED :: 1 << 63
+FreeBlock :: struct {
+	size_and_flags:  u64,
+	next_free_block: ^FreeBlock,
+}
+#assert(size_of(FreeBlock) == 16)
+
+eighth_alloc :: proc(eighth: ^EighthAllocator, size: int) -> uintptr {
+	// get desired size
+	size_index := alloc_index(size)
+	size_mask := u64(0xff) << size_index
+	// find next free block
+	next_free_block: ^FreeBlock
+	j := size_index / 64
+	available := eighth.available_free_lists[j] & size_mask
+	for {
+		k := 64 - intrinsics.count_leading_zeros(available)
+		if k != 0 {
+			// use existing free_list
+			index := j * 64 + k
+			assert(false, "TODO: use existing free_list")
+			break
+		}
+		j += 1
+		if j >= len(eighth.available_free_lists) {
+			// grow heap
+			next_heap_chunk := os_grow_heap(size)
+			eighth.end = uintptr(raw_data(next_heap_chunk)) + uintptr(len(next_heap_chunk))
+			next_free_block = (^FreeBlock)(raw_data(next_heap_chunk))
+			next_free_block.size_and_flags = u64(len(next_heap_chunk))
+			break
+		}
+		available := eighth.available_free_lists[j]
+	}
+	// split block
+	next_free_block.size_and_flags |= BLOCK_IS_USED
+	assert(false, "TODO: split block")
+	return 0
+}
+eighth_free :: proc(eighth: ^EighthAllocator, old_memory: rawptr, old_size: int) {
+	assert(false, "TODO: free")
+}
+
 EighthAllocator :: struct {
-	next:           uintptr,
-	end:            uintptr,
-	free_list_mask: [4]u64,
-	free_lists:     [256]uintptr,
+	next:                 uintptr,
+	end:                  uintptr,
+	available_free_lists: [1]u64,
+	free_lists:           [64]uintptr,
 }
 eighth_allocator :: proc() -> runtime.Allocator {
 	data := os_grow_heap(size_of(EighthAllocator))
 	ptr := uintptr(raw_data(data))
-	bump := (^EighthAllocator)(ptr)
-	bump.next = ptr + size_of(EighthAllocator)
-	bump.end = ptr + uintptr(len(data))
+	eighth := (^EighthAllocator)(ptr)
+	eighth.next = ptr + size_of(EighthAllocator)
+	eighth.end = ptr + uintptr(len(data))
 	return runtime.Allocator{eighth_allocator_proc, rawptr(ptr)}
 }
 eighth_allocator_proc :: proc(
@@ -48,27 +93,20 @@ eighth_allocator_proc :: proc(
 	data: []byte,
 	err: runtime.Allocator_Error,
 ) {
-	bump := (^EighthAllocator)(allocator_data)
+	eighth := (^EighthAllocator)(allocator_data)
 	#partial switch mode {
 	case .Alloc, .Alloc_Non_Zeroed, .Resize, .Resize_Non_Zeroed:
 		{
-			alignment_mask := uintptr(8 - 1)
-			next_ptr := (bump.next + alignment_mask) & ~alignment_mask
-			next_end := next_ptr + uintptr(size)
-			bump.next = next_end
-			if next_end > bump.end {
-				next_heap_chunk := os_grow_heap(size)
-				bump.end = uintptr(&next_heap_chunk[len(next_heap_chunk)])
-			}
+			next_ptr := eighth_alloc(eighth, size)
 			data = ([^]u8)(next_ptr)[:size]
-			intrinsics.mem_zero(rawptr(next_ptr), size)
-			if old_memory != nil {
-				copy(data, ([^]u8)(old_memory)[:old_size])
-				assert(false, "TODO: add to free list")
-			}
+			//intrinsics.mem_zero(rawptr(next_ptr), size)
+			//if old_memory != nil {
+			//	copy(data, ([^]u8)(old_memory)[:old_size])
+			//	assert(false, "TODO: add to free list")
+			//}
 		}
 	case .Free:
-		err = .Mode_Not_Implemented
+		eighth_free(eighth, old_memory, old_size)
 	case:
 		err = .Mode_Not_Implemented
 	}

@@ -49,6 +49,8 @@ static_step: GlpStep
 @(export)
 on_tick :: proc "c" () -> (save_power: bool) {
 	context = defaultContext
+	x := make([]int, 4)
+	assert(false, "...")
 	if false {
 		// draw triangle
 		glpStep(nil, window_width, window_height)
