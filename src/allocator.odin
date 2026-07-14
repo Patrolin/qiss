@@ -6,10 +6,11 @@ import "base:runtime"
 EXPONENT_OFFSET :: 0
 MANTISSA_BITS :: 1
 MANTISSA_VALUE :: 1 << MANTISSA_BITS
+OFFSET_VALUE :: 1 << (EXPONENT_OFFSET + MANTISSA_BITS)
 
 @(private = "file")
 free_index :: proc(#any_int block_size: u64) -> u64 {
-	//if block_size < 1 << (EXPONENT_OFFSET + MANTISSA_BITS) {return block_size >> EXPONENT_OFFSET}
+	if block_size < OFFSET_VALUE {return block_size >> EXPONENT_OFFSET}
 	exponent := 63 - intrinsics.count_leading_zeros(block_size >> MANTISSA_BITS)
 	mantissa := (block_size >> exponent) & (MANTISSA_VALUE - 1)
 	float := ((exponent - EXPONENT_OFFSET) << MANTISSA_BITS) + mantissa
@@ -17,7 +18,7 @@ free_index :: proc(#any_int block_size: u64) -> u64 {
 }
 @(private = "file")
 alloc_index :: proc(#any_int size: u64) -> u64 {
-	//if size < 1 << (EXPONENT_OFFSET + MANTISSA_BITS) {return size >> EXPONENT_OFFSET}
+	if size < OFFSET_VALUE {return size >> EXPONENT_OFFSET}
 	exponent := 63 - intrinsics.count_leading_zeros(size >> MANTISSA_BITS)
 	mantissa := (size >> exponent) & (MANTISSA_VALUE - 1)
 	float := ((exponent - EXPONENT_OFFSET) << MANTISSA_BITS) + mantissa
