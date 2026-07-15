@@ -44,7 +44,7 @@ arena_allocator_proc :: proc(
 			intrinsics.mem_zero(rawptr(next_ptr), size)
 			// realloc
 			if old_memory != nil {
-				copy(data, ([^]u8)(old_memory)[:old_size])
+				intrinsics.mem_copy_non_overlapping(raw_data(data), old_memory, old_size)
 			}
 		}
 	case .Free_All:

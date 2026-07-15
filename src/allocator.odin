@@ -110,7 +110,7 @@ eighth_allocator_proc :: proc(
 			data = ([^]u8)(next_ptr)[:size]
 			//intrinsics.mem_zero(rawptr(next_ptr), size)
 			//if old_memory != nil {
-			//	copy(data, ([^]u8)(old_memory)[:old_size])
+			//	intrinsics.mem_copy_non_overlapping(raw_data(data), old_memory, old_size)
 			//	assert(false, "TODO: add to free list")
 			//}
 		}
