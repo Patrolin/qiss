@@ -2,6 +2,12 @@ package main
 import "base:intrinsics"
 import "base:runtime"
 
+/*
+	A good allocator should maximize memory efficiency (per used page) by:
+	- merging neighbouring free blocks together
+	- allocating into the smallest blocks first
+*/
+
 // float(mantissa=1, exponent=5)
 EXPONENT_OFFSET :: 0
 MANTISSA_BITS :: 1
@@ -28,18 +34,20 @@ alloc_index :: proc(#any_int size: u64) -> u64 {
 	return float
 }
 
-BLOCK_IS_USED :: 1 << 31
+BLOCK_IS_USED :: 1 << (size_of(uintptr) * 8 - 1)
 BlockHeader :: struct {
 	offset_right_and_flags: u32,
 	offset_left:            u32,
 }
+#assert(size_of(BlockHeader) <= 8)
 FreeBlock :: struct {
 	using header: BlockHeader,
-	offset_next:  u32,
+	next_offset:  u32,
+	prev_offset:  u32,
 }
-#assert(size_of(FreeBlock) == 12)
+#assert(size_of(FreeBlock) <= 16)
 
-eighth_alloc :: proc(eighth: ^EighthAllocator, size: int) -> uintptr {
+eight_alloc :: proc(eighth: ^EightAllocator, size: int) -> uintptr {
 	printf("F: %, %, %", f_int(free_index(9)), f_int(free_index(12)), f_int(free_index(13)))
 	printf("A: %, %, %", f_int(alloc_index(9)), f_int(alloc_index(12)), f_int(alloc_index(13)))
 	// get desired size
@@ -73,25 +81,25 @@ eighth_alloc :: proc(eighth: ^EighthAllocator, size: int) -> uintptr {
 	assert(false, "TODO: split block")
 	return 0
 }
-eighth_free :: proc(eighth: ^EighthAllocator, old_memory: rawptr, old_size: int) {
+eight_free :: proc(eighth: ^EightAllocator, old_memory: rawptr, old_size: int) {
 	assert(false, "TODO: free")
 }
 
-EighthAllocator :: struct {
+EightAllocator :: struct {
 	next:                 uintptr,
 	end:                  uintptr,
 	available_free_lists: [1]u64,
 	free_lists:           [64]uintptr,
 }
-eighth_allocator :: proc() -> runtime.Allocator {
-	data := os_grow_heap(size_of(EighthAllocator))
+eight_allocator :: proc() -> runtime.Allocator {
+	data := os_grow_heap(size_of(EightAllocator))
 	ptr := uintptr(raw_data(data))
-	eighth := (^EighthAllocator)(ptr)
-	eighth.next = ptr + size_of(EighthAllocator)
+	eighth := (^EightAllocator)(ptr)
+	eighth.next = ptr + size_of(EightAllocator)
 	eighth.end = ptr + uintptr(len(data))
-	return runtime.Allocator{eighth_allocator_proc, rawptr(ptr)}
+	return runtime.Allocator{eight_allocator_proc, rawptr(ptr)}
 }
-eighth_allocator_proc :: proc(
+eight_allocator_proc :: proc(
 	allocator_data: rawptr,
 	mode: runtime.Allocator_Mode,
 	size, alignment: int,
@@ -102,11 +110,11 @@ eighth_allocator_proc :: proc(
 	data: []byte,
 	err: runtime.Allocator_Error,
 ) {
-	eighth := (^EighthAllocator)(allocator_data)
+	eighth := (^EightAllocator)(allocator_data)
 	#partial switch mode {
 	case .Alloc, .Alloc_Non_Zeroed, .Resize, .Resize_Non_Zeroed:
 		{
-			next_ptr := eighth_alloc(eighth, size)
+			next_ptr := eight_alloc(eighth, size)
 			data = ([^]u8)(next_ptr)[:size]
 			//intrinsics.mem_zero(rawptr(next_ptr), size)
 			//if old_memory != nil {
@@ -115,7 +123,7 @@ eighth_allocator_proc :: proc(
 			//}
 		}
 	case .Free:
-		eighth_free(eighth, old_memory, old_size)
+		eight_free(eighth, old_memory, old_size)
 	case:
 		err = .Mode_Not_Implemented
 	}
