@@ -26,7 +26,7 @@ alloc_index :: proc(#any_int size: u64) -> u64 {
 }
 
 // allocator
-BLOCK_IS_USED :: 1 << (size_of(uintptr) * 8 - 1)
+BLOCK_IS_USED :: 1 << (size_of(u32) * 8 - 1)
 BlockHeader :: struct {
 	offset_right_and_flags: u32,
 	offset_left:            u32,
