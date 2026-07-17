@@ -3,37 +3,29 @@ import "base:intrinsics"
 import "base:runtime"
 
 /*
-	A good allocator should maximize memory efficiency (per used page) by:
+	A good allocator must be O(1) and maximize memory efficiency (per used page) by:
 	- merging neighbouring free blocks together
 	- allocating into the smallest blocks first
 */
 
-// float(mantissa=1, exponent=5)
-EXPONENT_OFFSET :: 0
-MANTISSA_BITS :: 1
-MANTISSA_VALUE :: 1 << MANTISSA_BITS
-OFFSET_VALUE :: 1 << (EXPONENT_OFFSET + MANTISSA_BITS)
-
+// utils
 @(private = "file")
 free_index :: proc(#any_int block_size: u64) -> u64 {
-	if block_size < OFFSET_VALUE {return block_size >> EXPONENT_OFFSET}
-	exponent := 63 - intrinsics.count_leading_zeros(block_size >> MANTISSA_BITS)
-	mantissa := (block_size >> exponent) & (MANTISSA_VALUE - 1)
-	float := ((exponent - EXPONENT_OFFSET) << MANTISSA_BITS) + mantissa
-	return float
+	if block_size <= 48 {return (block_size - 8) / 8}
+	exponent := 63 - intrinsics.count_leading_zeros(block_size)
+	return exponent
 }
 @(private = "file")
 alloc_index :: proc(#any_int size: u64) -> u64 {
-	if size < OFFSET_VALUE {return size >> EXPONENT_OFFSET}
-	exponent := 63 - intrinsics.count_leading_zeros(size >> MANTISSA_BITS)
-	mantissa := (size >> exponent) & (MANTISSA_VALUE - 1)
-	float := ((exponent - EXPONENT_OFFSET) << MANTISSA_BITS) + mantissa
+	if size <= 48 {return (size - 1) / 8}
+	exponent := 63 - intrinsics.count_leading_zeros(size)
 	// round up
 	low_bits_mask := (u64(1) << (exponent)) - 1
-	if size & low_bits_mask != 0 {float += 1}
-	return float
+	if size & low_bits_mask != 0 {exponent += 1}
+	return exponent
 }
 
+// allocator
 BLOCK_IS_USED :: 1 << (size_of(uintptr) * 8 - 1)
 BlockHeader :: struct {
 	offset_right_and_flags: u32,
@@ -47,9 +39,15 @@ FreeBlock :: struct {
 }
 #assert(size_of(FreeBlock) <= 16)
 
-eight_alloc :: proc(eighth: ^EightAllocator, size: int) -> uintptr {
-	printf("F: %, %, %", f_int(free_index(9)), f_int(free_index(12)), f_int(free_index(13)))
-	printf("A: %, %, %", f_int(alloc_index(9)), f_int(alloc_index(12)), f_int(alloc_index(13)))
+FractionalAllocator :: struct {
+	next:                 uintptr,
+	end:                  uintptr,
+	available_free_lists: [1]u64,
+	free_lists:           [64]uintptr,
+}
+fractional_alloc :: proc(eighth: ^FractionalAllocator, size: int) -> uintptr {
+	printf("F: %, %, %", f_int(free_index(63)), f_int(free_index(64)), f_int(free_index(65)))
+	printf("A: %, %, %", f_int(alloc_index(63)), f_int(alloc_index(64)), f_int(alloc_index(65)))
 	// get desired size
 	size_index := alloc_index(size)
 	size_mask := u64(0xff) << size_index
@@ -81,25 +79,20 @@ eight_alloc :: proc(eighth: ^EightAllocator, size: int) -> uintptr {
 	assert(false, "TODO: split block")
 	return 0
 }
-eight_free :: proc(eighth: ^EightAllocator, old_memory: rawptr, old_size: int) {
+fractional_free :: proc(eighth: ^FractionalAllocator, old_memory: rawptr, old_size: int) {
 	assert(false, "TODO: free")
 }
 
-EightAllocator :: struct {
-	next:                 uintptr,
-	end:                  uintptr,
-	available_free_lists: [1]u64,
-	free_lists:           [64]uintptr,
-}
-eight_allocator :: proc() -> runtime.Allocator {
-	data := os_grow_heap(size_of(EightAllocator))
+// odin bindings
+fractional_allocator :: proc() -> runtime.Allocator {
+	data := os_grow_heap(size_of(FractionalAllocator))
 	ptr := uintptr(raw_data(data))
-	eighth := (^EightAllocator)(ptr)
-	eighth.next = ptr + size_of(EightAllocator)
+	eighth := (^FractionalAllocator)(ptr)
+	eighth.next = ptr + size_of(FractionalAllocator)
 	eighth.end = ptr + uintptr(len(data))
-	return runtime.Allocator{eight_allocator_proc, rawptr(ptr)}
+	return runtime.Allocator{fractional_allocator_proc, rawptr(ptr)}
 }
-eight_allocator_proc :: proc(
+fractional_allocator_proc :: proc(
 	allocator_data: rawptr,
 	mode: runtime.Allocator_Mode,
 	size, alignment: int,
@@ -110,11 +103,11 @@ eight_allocator_proc :: proc(
 	data: []byte,
 	err: runtime.Allocator_Error,
 ) {
-	eighth := (^EightAllocator)(allocator_data)
+	fractional := (^FractionalAllocator)(allocator_data)
 	#partial switch mode {
 	case .Alloc, .Alloc_Non_Zeroed, .Resize, .Resize_Non_Zeroed:
 		{
-			next_ptr := eight_alloc(eighth, size)
+			next_ptr := fractional_alloc(fractional, size)
 			data = ([^]u8)(next_ptr)[:size]
 			//intrinsics.mem_zero(rawptr(next_ptr), size)
 			//if old_memory != nil {
@@ -123,7 +116,7 @@ eight_allocator_proc :: proc(
 			//}
 		}
 	case .Free:
-		eight_free(eighth, old_memory, old_size)
+		fractional_free(fractional, old_memory, old_size)
 	case:
 		err = .Mode_Not_Implemented
 	}
