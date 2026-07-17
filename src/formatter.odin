@@ -12,8 +12,8 @@ sb_string :: proc(sb: StringBuilder) -> string {
 
 // printf
 assertion_failure_proc: runtime.Assertion_Failure_Proc : proc(prefix, message: string, loc: runtime.Source_Code_Location) -> ! {
-	message := tprintf("%(%:%) %: %", f_str(loc.file_path), f_uint(loc.line), f_uint(loc.column), f_str(prefix), f_str(message))
-	os_write(STDERR, raw_data(message), len(message))
+	formatted := tprintf("%(%:%) %: %", f_str(loc.file_path), f_uint(loc.line), f_uint(loc.column), f_str(prefix), f_str(message))
+	os_write(STDERR, raw_data(formatted), len(formatted))
 	unreachable()
 }
 print :: proc(str: string) {
