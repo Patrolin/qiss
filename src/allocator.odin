@@ -10,9 +10,9 @@ import "base:runtime"
 
 // utils
 @(private = "file")
-free_index :: proc(#any_int block_size: u64) -> u64 {
-	if block_size <= 48 {return (block_size - 8) / 8}
-	exponent := 63 - intrinsics.count_leading_zeros(block_size)
+free_index :: proc(#any_int block_data_size: u64) -> u64 {
+	if block_data_size <= 48 {return (block_data_size - 8) / 8}
+	exponent := 63 - intrinsics.count_leading_zeros(block_data_size)
 	return exponent
 }
 @(private = "file")
